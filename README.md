@@ -110,3 +110,18 @@ pnpm build
 ```
 
 Each command runs across all workspaces so new packages automatically opt in.
+
+## Publishing to npm
+
+The `@airnub/wellknown-api-catalog` package is published to the public npm
+registry.
+
+Releases are done via a manually triggered GitHub Actions workflow:
+
+1. Bump the version in `packages/api-catalog/package.json` using SemVer.
+2. Commit and push the change to `main`.
+3. Go to **Actions → Publish @airnub/wellknown-api-catalog** and click **Run workflow**.
+4. The workflow will build, test, and publish to npm using the `NPM_TOKEN` secret.
+
+For detailed steps and credential setup, see
+[`docs/publishing-npm.md`](./docs/publishing-npm.md).
