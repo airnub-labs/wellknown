@@ -1,27 +1,37 @@
 import type { Request, Response, NextFunction } from 'express';
 import type { ApiCatalogConfig } from '../types';
 import { buildApiCatalogLinkset } from '../builder';
-
-const RFC9727_PROFILE = 'https://www.rfc-editor.org/info/rfc9727';
+import { resolveOrigin, normalizeOriginStrategy } from '../origin';
+import { API_CATALOG_PATH, LINKSET_CONTENT_TYPE, API_CATALOG_LINK_REL } from '../constants';
 
 export function createExpressApiCatalogHandler(config: ApiCatalogConfig) {
+  const originStrategy = normalizeOriginStrategy(config.originStrategy);
   return function apiCatalogHandler(req: Request, res: Response, _next: NextFunction) {
+    const resolvedOrigin = resolveOrigin({ strategy: originStrategy, req });
+    const catalogUrl = `${resolvedOrigin.origin}${API_CATALOG_PATH}`;
     const linkset = buildApiCatalogLinkset(config, {
       req,
+      originStrategy,
+      resolvedOrigin,
     });
 
     res
       .status(200)
-      .setHeader('Content-Type', `application/linkset+json; profile="${RFC9727_PROFILE}"`)
+      .setHeader('Content-Type', LINKSET_CONTENT_TYPE)
+      .setHeader('Link', `<${catalogUrl}>; rel="${API_CATALOG_LINK_REL}"`)
       .json(linkset);
   };
 }
 
-export function createExpressApiCatalogHeadHandler() {
+export function createExpressApiCatalogHeadHandler(config?: ApiCatalogConfig) {
+  const originStrategy = normalizeOriginStrategy(config?.originStrategy);
   return function apiCatalogHeadHandler(req: Request, res: Response, _next: NextFunction) {
-    const proto = req.secure ? 'https' : 'http';
-    const host = req.get('host') ?? 'localhost';
-    const url = `${proto}://${host}/.well-known/api-catalog`;
-    res.status(200).setHeader('Link', `<${url}>; rel="api-catalog"`).end();
+    const resolvedOrigin = resolveOrigin({ strategy: originStrategy, req });
+    const catalogUrl = `${resolvedOrigin.origin}${API_CATALOG_PATH}`;
+    res
+      .status(200)
+      .setHeader('Content-Type', LINKSET_CONTENT_TYPE)
+      .setHeader('Link', `<${catalogUrl}>; rel="${API_CATALOG_LINK_REL}"`)
+      .end();
   };
 }
