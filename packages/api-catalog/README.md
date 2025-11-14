@@ -46,10 +46,13 @@ No more guessing, scraping docs, or relying on out-of-date manifests.
 
 ## Installation
 
+This package is currently in pre-release (`0.1.0-next.x`). Install via the
+`next` dist-tag until the first stable release:
+
 ```bash
-pnpm add @airnub/wellknown-api-catalog
+pnpm add @airnub/wellknown-api-catalog@next
 # or
-npm install @airnub/wellknown-api-catalog
+npm install @airnub/wellknown-api-catalog@next
 ```
 
 ## Quickstart
@@ -59,28 +62,28 @@ import type { ApiCatalogConfig } from '@airnub/wellknown-api-catalog';
 import { openApiSpec, graphqlSchemaSpec } from '@airnub/wellknown-api-catalog';
 
 export const catalogConfig: ApiCatalogConfig = {
-  publisher: 'airnub-labs',
+  publisher: 'example-publisher',
   originStrategy: { kind: 'fromRequest', trustProxy: false },
   apis: [
     {
-      id: 'rotation-detector',
-      title: 'Institutional Rotation Detector API',
-      basePath: '/apis/rotation',
+      id: 'example-service-one',
+      title: 'Example Service One API',
+      basePath: '/apis/service-one',
       specs: [
-        openApiSpec('/apis/rotation/openapi.json', '3.1'),
+        openApiSpec('/apis/service-one/openapi.json', '3.1'),
         {
           rel: 'service-doc',
-          href: 'https://docs.airnub.dev/rotation',
+          href: 'https://docs.example.com/service-one',
           type: 'text/html',
           title: 'HTML docs',
         },
       ],
     },
     {
-      id: 'unusual-whales-proxy',
-      title: 'Unusual Whales Proxy API',
-      basePath: '/apis/unw',
-      specs: [graphqlSchemaSpec('/apis/unw/schema.graphql')],
+      id: 'example-service-two',
+      title: 'Example Service Two API',
+      basePath: '/apis/service-two',
+      specs: [graphqlSchemaSpec('/apis/service-two/schema.graphql')],
     },
   ],
 };
@@ -109,16 +112,16 @@ and `Link: rel="api-catalog"` headers as the GET handler—just without a body.
 
 ```ts
 import Fastify from 'fastify';
-import { registerFastifyApiCatalog } from '@airnub/wellknown-api-catalog';
+import { fastifyApiCatalogPlugin } from '@airnub/wellknown-api-catalog';
 import { catalogConfig } from './catalog-config';
 
 const fastify = Fastify();
-registerFastifyApiCatalog(fastify, catalogConfig);
+await fastify.register(fastifyApiCatalogPlugin, { config: catalogConfig });
 ```
 
-`registerFastifyApiCatalog` wires up both GET and HEAD routes with identical
-headers so your catalog stays compliant whether clients fetch metadata or just
-probe the endpoint.
+The plugin registers both GET and HEAD routes with identical headers so your
+catalog stays compliant whether clients fetch metadata or just probe the
+endpoint.
 
 ## Linkset output
 
@@ -128,19 +131,19 @@ probe the endpoint.
 {
   "linkset": [
     {
-      "anchor": "https://api.example.com/apis/rotation",
+      "anchor": "https://api.example.com/apis/service-one",
       "service-desc": [
-        { "href": "/apis/rotation/openapi.json", "type": "application/vnd.oai.openapi+json" }
+        { "href": "/apis/service-one/openapi.json", "type": "application/vnd.oai.openapi+json" }
       ],
       "service-doc": [
-        { "href": "https://docs.airnub.dev/rotation", "type": "text/html" }
+        { "href": "https://docs.example.com/service-one", "type": "text/html" }
       ]
     }
   ],
   "linkset-metadata": [
     {
       "profile": "https://www.rfc-editor.org/info/rfc9727",
-      "publisher": "airnub-labs"
+      "publisher": "example-publisher"
     }
   ]
 }

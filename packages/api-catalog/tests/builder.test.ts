@@ -7,26 +7,26 @@ import { API_CATALOG_LINK_REL } from '../src/constants';
 
 describe('buildApiCatalogLinkset', () => {
   const config: ApiCatalogConfig = {
-    publisher: 'airnub-labs',
+    publisher: 'example-publisher',
     apis: [
       {
-        id: 'rotation-detector',
-        title: 'Rotation Detector API',
-        basePath: '/apis/rotation',
+        id: 'example-service-one',
+        title: 'Example Service One API',
+        basePath: '/apis/service-one',
         specs: [
-          openApiSpec('/apis/rotation/openapi.json'),
+          openApiSpec('/apis/service-one/openapi.json'),
           {
             rel: 'service-doc',
-            href: 'https://docs.airnub.dev/rotation',
+            href: 'https://docs.example.com/service-one',
             type: 'text/html',
             title: 'Docs',
           },
         ],
       },
       {
-        id: 'whales-proxy',
-        basePath: '/apis/unw',
-        specs: [graphqlSchemaSpec('/apis/unw/schema.graphql')],
+        id: 'example-service-two',
+        basePath: '/apis/service-two',
+        specs: [graphqlSchemaSpec('/apis/service-two/schema.graphql')],
       },
     ],
   };
@@ -40,10 +40,10 @@ describe('buildApiCatalogLinkset', () => {
 
     const result = buildApiCatalogLinkset(config, { req });
     expect(result.linkset).toHaveLength(2);
-    expect(result.linkset[0].anchor).toBe('http://api.example.com/apis/rotation');
+    expect(result.linkset[0].anchor).toBe('http://api.example.com/apis/service-one');
     expect(result.linkset[0]['service-desc']).toHaveLength(1);
     expect(result.linkset[0]['service-doc']).toHaveLength(1);
-    expect(result.linkset[1].anchor).toBe('http://api.example.com/apis/unw');
+    expect(result.linkset[1].anchor).toBe('http://api.example.com/apis/service-two');
     expect(result.linkset[1]['service-desc']?.[0].type).toBe('application/graphql');
     expect(result['linkset-metadata']).toEqual(
       expect.arrayContaining([
@@ -76,15 +76,15 @@ describe('buildApiCatalogLinkset', () => {
       originStrategy: { kind: 'fixed', origin: 'https://catalog.example.com', basePath: '/apis' },
       apis: [
         {
-          id: 'rotation-detector',
-          basePath: '/rotation',
-          specs: [openApiSpec('/rotation/openapi.json')],
+          id: 'example-service-one',
+          basePath: '/service-one',
+          specs: [openApiSpec('/service-one/openapi.json')],
         },
       ],
     };
 
     const result = buildApiCatalogLinkset(prefixedConfig, { req });
-    expect(result.linkset[0].anchor).toBe('https://catalog.example.com/apis/rotation');
+    expect(result.linkset[0].anchor).toBe('https://catalog.example.com/apis/service-one');
   });
 
   it('defaults to the service-desc relation when rel is omitted', () => {
@@ -93,9 +93,9 @@ describe('buildApiCatalogLinkset', () => {
       {
         apis: [
           {
-            id: 'rotation-detector',
-            basePath: '/apis/rotation',
-            specs: [{ href: '/apis/rotation/openapi.json' }],
+            id: 'example-service-one',
+            basePath: '/apis/service-one',
+            specs: [{ href: '/apis/service-one/openapi.json' }],
           },
         ],
       },
@@ -104,7 +104,7 @@ describe('buildApiCatalogLinkset', () => {
 
     expect(result.linkset[0]['service-desc']).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ href: '/apis/rotation/openapi.json' }),
+        expect.objectContaining({ href: '/apis/service-one/openapi.json' }),
       ])
     );
   });
