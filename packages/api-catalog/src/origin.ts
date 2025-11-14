@@ -5,6 +5,12 @@ import forwarded from 'forwarded-http';
 import proxyaddr from 'proxy-addr';
 import type { OriginStrategy, TrustProxySetting } from './types';
 
+export const DEFAULT_ORIGIN_STRATEGY: OriginStrategy = { kind: 'fromRequest', trustProxy: false };
+
+export function normalizeOriginStrategy(strategy?: OriginStrategy): OriginStrategy {
+  return strategy ?? DEFAULT_ORIGIN_STRATEGY;
+}
+
 export interface OriginResult {
   scheme: 'http' | 'https';
   host: string;

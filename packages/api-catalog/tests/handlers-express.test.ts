@@ -31,6 +31,7 @@ describe('Express handlers', () => {
     expect(res.headers['content-type']).toContain('application/linkset+json');
     expect(res.body.linkset).toHaveLength(1);
     expect(res.body.linkset[0].anchor).toBe('http://api.example.com/apis/rotation');
+    expect(res.headers['link']).toBe('<http://api.example.com/.well-known/api-catalog>; rel="api-catalog"');
   });
 
   it('returns a Link header for HEAD requests', async () => {
@@ -41,5 +42,7 @@ describe('Express handlers', () => {
 
     expect(res.status).toBe(200);
     expect(res.headers['link']).toBe('<http://api.example.com/.well-known/api-catalog>; rel="api-catalog"');
+    expect(res.headers['content-type']).toContain('application/linkset+json');
+    expect(res.text).toBeUndefined();
   });
 });

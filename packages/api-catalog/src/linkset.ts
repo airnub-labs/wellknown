@@ -11,6 +11,13 @@ export interface LinksetContext {
   [rel: string]: LinkObject[] | string | undefined;
 }
 
+export interface LinksetMetadata {
+  profile?: string | string[];
+  publisher?: string;
+  [key: string]: unknown;
+}
+
 export interface ApiCatalogLinkset {
   linkset: LinksetContext[];
+  'linkset-metadata'?: LinksetMetadata[];
 }

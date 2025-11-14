@@ -30,6 +30,7 @@ describe('Fastify handler', () => {
     expect(getRes.headers['content-type']).toContain('application/linkset+json');
     const body = getRes.json();
     expect(body.linkset[0].anchor).toBe('http://api.example.com/apis/rotation');
+    expect(getRes.headers['link']).toBe('<http://api.example.com/.well-known/api-catalog>; rel="api-catalog"');
 
     const headRes = await fastify.inject({
       method: 'HEAD',
@@ -39,5 +40,7 @@ describe('Fastify handler', () => {
 
     expect(headRes.statusCode).toBe(200);
     expect(headRes.headers['link']).toBe('<http://api.example.com/.well-known/api-catalog>; rel="api-catalog"');
+    expect(headRes.headers['content-type']).toContain('application/linkset+json');
+    expect(headRes.body).toBe('');
   });
 });

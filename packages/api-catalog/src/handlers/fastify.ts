@@ -1,25 +1,34 @@
 import type { FastifyInstance } from 'fastify';
 import type { ApiCatalogConfig } from '../types';
 import { buildApiCatalogLinkset } from '../builder';
-
-const RFC9727_PROFILE = 'https://www.rfc-editor.org/info/rfc9727';
+import { resolveOrigin, normalizeOriginStrategy } from '../origin';
+import { API_CATALOG_PATH, LINKSET_CONTENT_TYPE, API_CATALOG_LINK_REL } from '../constants';
 
 export function registerFastifyApiCatalog(fastify: FastifyInstance, config: ApiCatalogConfig) {
+  const originStrategy = normalizeOriginStrategy(config.originStrategy);
   fastify.get('/.well-known/api-catalog', async (request, reply) => {
+    const resolvedOrigin = resolveOrigin({ strategy: originStrategy, req: request.raw });
+    const catalogUrl = `${resolvedOrigin.origin}${API_CATALOG_PATH}`;
     const linkset = buildApiCatalogLinkset(config, {
       req: request.raw,
+      originStrategy,
+      resolvedOrigin,
     });
 
     return reply
       .code(200)
-      .header('Content-Type', `application/linkset+json; profile="${RFC9727_PROFILE}"`)
+      .header('Content-Type', LINKSET_CONTENT_TYPE)
+      .header('Link', `<${catalogUrl}>; rel="${API_CATALOG_LINK_REL}"`)
       .send(linkset);
   });
 
   fastify.head('/.well-known/api-catalog', async (request, reply) => {
-    const proto = request.protocol;
-    const host = request.headers['host'] ?? 'localhost';
-    const url = `${proto}://${host}/.well-known/api-catalog`;
-    return reply.header('Link', `<${url}>; rel="api-catalog"`).send();
+    const resolvedOrigin = resolveOrigin({ strategy: originStrategy, req: request.raw });
+    const catalogUrl = `${resolvedOrigin.origin}${API_CATALOG_PATH}`;
+    return reply
+      .code(200)
+      .header('Content-Type', LINKSET_CONTENT_TYPE)
+      .header('Link', `<${catalogUrl}>; rel="${API_CATALOG_LINK_REL}"`)
+      .send();
   });
 }

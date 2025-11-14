@@ -5,7 +5,7 @@ Publish an RFC 9727 `/.well-known/api-catalog` endpoint backed by Linkset JSON
 surface area of your host.
 
 - **Spec-aligned** – emits `application/linkset+json` with the `api-catalog` link
-  relation and profile metadata.
+  relation, `linkset-metadata` profile marker, and the RFC 9727 profile header.
 - **Spec-agnostic** – link to OpenAPI, AsyncAPI, GraphQL SDL, JSON Schema, or
   any other document via the standard web API link relations from RFC 8631.
 - **Proxy-aware** – reconstructs the externally-visible origin using
@@ -60,7 +60,7 @@ import { openApiSpec, graphqlSchemaSpec } from '@airnub/wellknown-api-catalog';
 
 export const catalogConfig: ApiCatalogConfig = {
   publisher: 'airnub-labs',
-  originStrategy: { kind: 'fromRequest', trustProxy: true },
+  originStrategy: { kind: 'fromRequest', trustProxy: false },
   apis: [
     {
       id: 'rotation-detector',
@@ -99,8 +99,11 @@ import { catalogConfig } from './catalog-config';
 const app = express();
 
 app.get('/.well-known/api-catalog', createExpressApiCatalogHandler(catalogConfig));
-app.head('/.well-known/api-catalog', createExpressApiCatalogHeadHandler());
+app.head('/.well-known/api-catalog', createExpressApiCatalogHeadHandler(catalogConfig));
 ```
+
+The HEAD handler reuses your origin strategy so it emits the same `Content-Type`
+and `Link: rel="api-catalog"` headers as the GET handler—just without a body.
 
 ### Fastify
 
@@ -112,6 +115,41 @@ import { catalogConfig } from './catalog-config';
 const fastify = Fastify();
 registerFastifyApiCatalog(fastify, catalogConfig);
 ```
+
+`registerFastifyApiCatalog` wires up both GET and HEAD routes with identical
+headers so your catalog stays compliant whether clients fetch metadata or just
+probe the endpoint.
+
+## Linkset output
+
+`buildApiCatalogLinkset` returns a payload that mirrors RFC 9264:
+
+```json
+{
+  "linkset": [
+    {
+      "anchor": "https://api.example.com/apis/rotation",
+      "service-desc": [
+        { "href": "/apis/rotation/openapi.json", "type": "application/vnd.oai.openapi+json" }
+      ],
+      "service-doc": [
+        { "href": "https://docs.airnub.dev/rotation", "type": "text/html" }
+      ]
+    }
+  ],
+  "linkset-metadata": [
+    {
+      "profile": "https://www.rfc-editor.org/info/rfc9727",
+      "publisher": "airnub-labs"
+    }
+  ]
+}
+```
+
+Every API anchor is a fully-qualified origin plus base path with trailing slashes
+trimmed. Specs default to the `service-desc` relation (unless you override the
+`rel` per entry), and the metadata block announces the RFC 9727 profile plus the
+optional `publisher` you supply in the config.
 
 ### AI / agent workflow
 
@@ -144,11 +182,11 @@ common path (e.g., `/apis`). Individual APIs can override the final anchor with
 
 ## Security considerations
 
-Only enable `trustProxy: true` (or whitelist addresses) when you control the
-proxy hop closest to your application. Otherwise an attacker could spoof
-`Forwarded` headers and publish incorrect origins. For zero-trust scenarios, use
-`trustProxy: false` or the `fixed` strategy so anchors always reflect your local
-listener configuration.
+`trustProxy` defaults to `false`. Only enable `trustProxy: true` (or whitelist
+addresses) when you control the proxy hop closest to your application.
+Otherwise an attacker could spoof `Forwarded` headers and publish incorrect
+origins. For zero-trust scenarios, keep `trustProxy: false` or use the `fixed`
+strategy so anchors always reflect your local listener configuration.
 
 ## How agents can consume the catalog
 
