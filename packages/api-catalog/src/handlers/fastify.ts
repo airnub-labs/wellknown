@@ -1,10 +1,28 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyPluginCallback } from 'fastify';
 import type { ApiCatalogConfig } from '../types';
 import { buildApiCatalogLinkset } from '../builder';
 import { resolveOrigin, normalizeOriginStrategy } from '../origin';
 import { API_CATALOG_PATH, LINKSET_CONTENT_TYPE, API_CATALOG_LINK_REL } from '../constants';
 
-export function registerFastifyApiCatalog(fastify: FastifyInstance, config: ApiCatalogConfig) {
+export interface FastifyApiCatalogPluginOptions {
+  config: ApiCatalogConfig;
+}
+
+export const fastifyApiCatalogPlugin: FastifyPluginCallback<FastifyApiCatalogPluginOptions> = (
+  fastify,
+  opts,
+  done
+) => {
+  if (!opts?.config) {
+    done(new Error('fastifyApiCatalogPlugin requires a config option.'));
+    return;
+  }
+
+  registerFastifyApiCatalogRoutes(fastify, opts.config);
+  done();
+};
+
+export function registerFastifyApiCatalogRoutes(fastify: FastifyInstance, config: ApiCatalogConfig) {
   const originStrategy = normalizeOriginStrategy(config.originStrategy);
   fastify.get('/.well-known/api-catalog', async (request, reply) => {
     const resolvedOrigin = resolveOrigin({ strategy: originStrategy, req: request.raw });
@@ -32,3 +50,6 @@ export function registerFastifyApiCatalog(fastify: FastifyInstance, config: ApiC
       .send();
   });
 }
+
+/** @deprecated Use fastifyApiCatalogPlugin instead. */
+export const registerFastifyApiCatalog = registerFastifyApiCatalogRoutes;

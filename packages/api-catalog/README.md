@@ -46,10 +46,13 @@ No more guessing, scraping docs, or relying on out-of-date manifests.
 
 ## Installation
 
+This package is currently in pre-release (`0.1.0-next.x`). Install via the
+`next` dist-tag until the first stable release:
+
 ```bash
-pnpm add @airnub/wellknown-api-catalog
+pnpm add @airnub/wellknown-api-catalog@next
 # or
-npm install @airnub/wellknown-api-catalog
+npm install @airnub/wellknown-api-catalog@next
 ```
 
 ## Quickstart
@@ -59,28 +62,28 @@ import type { ApiCatalogConfig } from '@airnub/wellknown-api-catalog';
 import { openApiSpec, graphqlSchemaSpec } from '@airnub/wellknown-api-catalog';
 
 export const catalogConfig: ApiCatalogConfig = {
-  publisher: 'airnub-labs',
+  publisher: 'example-publisher',
   originStrategy: { kind: 'fromRequest', trustProxy: false },
   apis: [
     {
-      id: 'rotation-detector',
-      title: 'Institutional Rotation Detector API',
-      basePath: '/apis/rotation',
+      id: 'example-service-one',
+      title: 'Example Service One API',
+      basePath: '/apis/service-one',
       specs: [
-        openApiSpec('/apis/rotation/openapi.json', '3.1'),
+        openApiSpec('/apis/service-one/openapi.json', '3.1'),
         {
           rel: 'service-doc',
-          href: 'https://docs.airnub.dev/rotation',
+          href: 'https://docs.example.com/service-one',
           type: 'text/html',
           title: 'HTML docs',
         },
       ],
     },
     {
-      id: 'unusual-whales-proxy',
-      title: 'Unusual Whales Proxy API',
-      basePath: '/apis/unw',
-      specs: [graphqlSchemaSpec('/apis/unw/schema.graphql')],
+      id: 'example-service-two',
+      title: 'Example Service Two API',
+      basePath: '/apis/service-two',
+      specs: [graphqlSchemaSpec('/apis/service-two/schema.graphql')],
     },
   ],
 };
@@ -109,16 +112,130 @@ and `Link: rel="api-catalog"` headers as the GET handler—just without a body.
 
 ```ts
 import Fastify from 'fastify';
-import { registerFastifyApiCatalog } from '@airnub/wellknown-api-catalog';
+import { fastifyApiCatalogPlugin } from '@airnub/wellknown-api-catalog';
 import { catalogConfig } from './catalog-config';
 
 const fastify = Fastify();
-registerFastifyApiCatalog(fastify, catalogConfig);
+await fastify.register(fastifyApiCatalogPlugin, { config: catalogConfig });
 ```
 
-`registerFastifyApiCatalog` wires up both GET and HEAD routes with identical
-headers so your catalog stays compliant whether clients fetch metadata or just
-probe the endpoint.
+The plugin registers both GET and HEAD routes with identical headers so your
+catalog stays compliant whether clients fetch metadata or just probe the
+endpoint.
+
+### Using with Next.js App Router
+
+When you're building a route handler under `app/.well-known/api-catalog/route.ts`,
+derive the origin from `NextRequest.url` and feed it into the framework-agnostic
+`buildApiCatalogLinksetForOrigin` helper:
+
+```ts
+// app/.well-known/api-catalog/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import type { ApiCatalogConfig } from '@airnub/wellknown-api-catalog';
+import {
+  buildApiCatalogLinksetForOrigin,
+  openApiSpec,
+} from '@airnub/wellknown-api-catalog';
+
+const catalogConfig: ApiCatalogConfig = {
+  publisher: 'example-publisher',
+  apis: [
+    {
+      id: 'example-service-one',
+      title: 'Example Service One API',
+      basePath: '/api/service-one',
+      specs: [openApiSpec('/api/service-one/openapi.json', '3.1')],
+    },
+  ],
+};
+
+const RFC9727_PROFILE = 'https://www.rfc-editor.org/info/rfc9727';
+
+export function GET(request: NextRequest) {
+  const origin = new URL(request.url).origin;
+  const linkset = buildApiCatalogLinksetForOrigin(catalogConfig, origin);
+
+  return NextResponse.json(linkset, {
+    headers: {
+      'Content-Type': `application/linkset+json; profile="${RFC9727_PROFILE}"`,
+    },
+  });
+}
+
+export function HEAD(request: NextRequest) {
+  const origin = new URL(request.url).origin;
+  const url = `${origin}/.well-known/api-catalog`;
+
+  return new NextResponse(null, {
+    headers: {
+      'Content-Type': `application/linkset+json; profile="${RFC9727_PROFILE}"`,
+      Link: `<${url}>; rel="api-catalog"`,
+    },
+  });
+}
+```
+
+`buildApiCatalogLinksetForOrigin` takes a plain `origin` string, so it works in
+both Edge and Node runtimes without relying on Node's `IncomingMessage`.
+
+### Using with Supabase Edge Functions (Deno)
+
+Supabase Edge Functions run on Deno and expose the standard Fetch API. Import
+the package via the npm compatibility layer and reuse the same helper:
+
+```ts
+// supabase/functions/api-catalog/index.ts
+import { serve } from 'https://deno.land/std/http/server.ts';
+import {
+  buildApiCatalogLinksetForOrigin,
+  openApiSpec,
+  type ApiCatalogConfig,
+} from 'npm:@airnub/wellknown-api-catalog';
+
+const catalogConfig: ApiCatalogConfig = {
+  publisher: 'example-publisher',
+  apis: [
+    {
+      id: 'example-service-one',
+      title: 'Example Service One API',
+      basePath: '/api/service-one',
+      specs: [openApiSpec('/api/service-one/openapi.json', '3.1')],
+    },
+  ],
+};
+
+const RFC9727_PROFILE = 'https://www.rfc-editor.org/info/rfc9727';
+
+serve((request: Request): Response => {
+  const url = new URL(request.url);
+
+  if (url.pathname !== '/.well-known/api-catalog') {
+    return new Response('Not found', { status: 404 });
+  }
+
+  const origin = url.origin;
+  const linkset = buildApiCatalogLinksetForOrigin(catalogConfig, origin);
+
+  if (request.method === 'HEAD') {
+    return new Response(null, {
+      headers: {
+        'Content-Type': `application/linkset+json; profile="${RFC9727_PROFILE}"`,
+        Link: `<${origin}/.well-known/api-catalog>; rel="api-catalog"`,
+      },
+    });
+  }
+
+  return new Response(JSON.stringify(linkset), {
+    headers: {
+      'Content-Type': `application/linkset+json; profile="${RFC9727_PROFILE}"`,
+    },
+  });
+});
+```
+
+By staying within the Fetch API surface area you avoid Node-specific globals and
+keep the same catalog logic across Express, Fastify, Next.js, and Supabase.
 
 ## Linkset output
 
@@ -128,19 +245,19 @@ probe the endpoint.
 {
   "linkset": [
     {
-      "anchor": "https://api.example.com/apis/rotation",
+      "anchor": "https://api.example.com/apis/service-one",
       "service-desc": [
-        { "href": "/apis/rotation/openapi.json", "type": "application/vnd.oai.openapi+json" }
+        { "href": "/apis/service-one/openapi.json", "type": "application/vnd.oai.openapi+json" }
       ],
       "service-doc": [
-        { "href": "https://docs.airnub.dev/rotation", "type": "text/html" }
+        { "href": "https://docs.example.com/service-one", "type": "text/html" }
       ]
     }
   ],
   "linkset-metadata": [
     {
       "profile": "https://www.rfc-editor.org/info/rfc9727",
-      "publisher": "airnub-labs"
+      "publisher": "example-publisher"
     }
   ]
 }

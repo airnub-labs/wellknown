@@ -210,7 +210,7 @@ export interface ApiEntryConfig {
   title?: string;
   description?: string;
 
-  /** Path segment for this API under the origin, e.g. "/apis/rotation". */
+  /** Path segment for this API under the origin, e.g. "/apis/service-one". */
   basePath?: string;
 
   /** Fully-qualified anchor URL; overrides basePath+origin if given. */
@@ -463,37 +463,46 @@ ts
 Copy code
 // src/handlers/fastify.ts
 
-import type { FastifyInstance } from "fastify";
+import type { FastifyPluginCallback } from "fastify";
 import type { ApiCatalogConfig } from "../types";
 import { buildApiCatalogLinkset } from "../builder";
+import { API_CATALOG_PATH, LINKSET_CONTENT_TYPE } from "../constants";
 
-const RFC9727_PROFILE = "https://www.rfc-editor.org/info/rfc9727";
+interface FastifyApiCatalogPluginOptions {
+  config: ApiCatalogConfig;
+}
 
-export function registerFastifyApiCatalog(
-  fastify: FastifyInstance,
-  config: ApiCatalogConfig
-) {
-  fastify.get("/.well-known/api-catalog", async (request, reply) => {
+export const fastifyApiCatalogPlugin: FastifyPluginCallback<FastifyApiCatalogPluginOptions> = (
+  fastify,
+  opts,
+  done
+) => {
+  const { config } = opts ?? {};
+  if (!config) {
+    done(new Error("fastifyApiCatalogPlugin requires a config option."));
+    return;
+  }
+
+  fastify.get(API_CATALOG_PATH, async (request, reply) => {
     const linkset = buildApiCatalogLinkset(config, {
       req: request.raw,
     });
 
-    return reply
-      .code(200)
-      .header(
-        "Content-Type",
-        `application/linkset+json; profile="${RFC9727_PROFILE}"`
-      )
-      .send(linkset);
+    return reply.header("Content-Type", LINKSET_CONTENT_TYPE).send(linkset);
   });
 
-  fastify.head("/.well-known/api-catalog", async (request, reply) => {
+  fastify.head(API_CATALOG_PATH, async (request, reply) => {
     const proto = request.protocol;
     const host = request.headers["host"] ?? "localhost";
-    const url = `${proto}://${host}/.well-known/api-catalog`;
-    return reply.header("Link", `<${url}>; rel="api-catalog"`).send();
+    const url = `${proto}://${host}${API_CATALOG_PATH}`;
+    return reply
+      .header("Content-Type", LINKSET_CONTENT_TYPE)
+      .header("Link", `<${url}>; rel="api-catalog"`)
+      .send();
   });
-}
+
+  done();
+};
 6. Helpers (src/helpers.ts)
 Provide convenience helpers (spec-agnostic core; helpers are opinionated sugar):
 
@@ -662,9 +671,9 @@ Installation:
 
 bash
 Copy code
-pnpm add @airnub/wellknown-api-catalog
+pnpm add @airnub/wellknown-api-catalog@next
 # or
-npm install @airnub/wellknown-api-catalog
+npm install @airnub/wellknown-api-catalog@next
 Example config:
 
 ts
@@ -673,29 +682,29 @@ import type { ApiCatalogConfig } from "@airnub/wellknown-api-catalog";
 import { openApiSpec, graphqlSchemaSpec } from "@airnub/wellknown-api-catalog";
 
 export const catalogConfig: ApiCatalogConfig = {
-  publisher: "airnub-labs",
+  publisher: "example-publisher",
   originStrategy: { kind: "fromRequest", trustProxy: true },
   apis: [
     {
-      id: "rotation-detector",
-      title: "Institutional Rotation Detector API",
-      basePath: "/apis/rotation",
+      id: "example-service-one",
+      title: "Example Service One API",
+      basePath: "/apis/service-one",
       specs: [
-        openApiSpec("/apis/rotation/openapi.json", "3.1"),
+        openApiSpec("/apis/service-one/openapi.json", "3.1"),
         {
           rel: "service-doc",
-          href: "https://docs.airnub.dev/rotation",
+          href: "https://docs.example.com/service-one",
           type: "text/html",
           title: "HTML docs",
         },
       ],
     },
     {
-      id: "unusual-whales-proxy",
-      title: "Unusual Whales Proxy API",
-      basePath: "/apis/unw",
+      id: "example-service-two",
+      title: "Example Service Two API",
+      basePath: "/apis/service-two",
       specs: [
-        graphqlSchemaSpec("/apis/unw/schema.graphql"),
+        graphqlSchemaSpec("/apis/service-two/schema.graphql"),
       ],
     },
   ],

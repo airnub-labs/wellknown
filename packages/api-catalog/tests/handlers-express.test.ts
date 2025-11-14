@@ -11,9 +11,9 @@ import { openApiSpec } from '../src/helpers';
 const config: ApiCatalogConfig = {
   apis: [
     {
-      id: 'rotation',
-      basePath: '/apis/rotation',
-      specs: [openApiSpec('/apis/rotation/openapi.json')],
+      id: 'example-service-one',
+      basePath: '/apis/service-one',
+      specs: [openApiSpec('/apis/service-one/openapi.json')],
     },
   ],
 };
@@ -30,7 +30,7 @@ describe('Express handlers', () => {
     expect(res.status).toBe(200);
     expect(res.headers['content-type']).toContain('application/linkset+json');
     expect(res.body.linkset).toHaveLength(1);
-    expect(res.body.linkset[0].anchor).toBe('http://api.example.com/apis/rotation');
+    expect(res.body.linkset[0].anchor).toBe('http://api.example.com/apis/service-one');
     expect(res.headers['link']).toBe('<http://api.example.com/.well-known/api-catalog>; rel="api-catalog"');
   });
 

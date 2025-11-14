@@ -56,4 +56,5 @@ jobs:
         if: inputs.dry_run != 'true'
         working-directory: packages/api-catalog
         run: |
-          npm publish --access public
+          # Pre-release publish (use --tag next until stable GA)
+          npm publish --access public --tag next
