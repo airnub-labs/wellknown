@@ -1,0 +1,60 @@
+name: Publish @airnub/wellknown-api-catalog
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "If true, run build/test only (no publish)"
+        required: false
+        default: "false"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      NODE_ENV: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8.15.4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          registry-url: https://registry.npmjs.org
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+      - name: Configure npm auth
+        if: inputs.dry_run != 'true'
+        run: |
+          echo "//registry.npmjs.org/:_authToken=\${NPM_TOKEN}" > ~/.npmrc
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish @airnub/wellknown-api-catalog
+        if: inputs.dry_run != 'true'
+        working-directory: packages/api-catalog
+        run: |
+          # Pre-release publish (use --tag next until stable GA)
+          npm publish --access public --tag next
