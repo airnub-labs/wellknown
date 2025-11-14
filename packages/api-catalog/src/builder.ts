@@ -54,6 +54,22 @@ function buildMetadata(publisher?: string): LinksetMetadata[] {
   return [metadata];
 }
 
+interface BuildForOriginOptions {
+  basePathPrefix?: string;
+}
+
+function buildApiCatalogLinksetForOriginInternal(
+  config: ApiCatalogConfig,
+  origin: string,
+  options?: BuildForOriginOptions
+): ApiCatalogLinkset {
+  const linkset: LinksetContext[] = config.apis.map((api) =>
+    buildContextForApi(api, origin, options?.basePathPrefix)
+  );
+
+  return { linkset, 'linkset-metadata': buildMetadata(config.publisher) };
+}
+
 export function buildApiCatalogLinkset(
   config: ApiCatalogConfig,
   options: BuildContextOptions
@@ -62,9 +78,15 @@ export function buildApiCatalogLinkset(
   const resolvedOrigin = options.resolvedOrigin ?? resolveOrigin({ strategy: originStrategy, req: options.req });
   const basePathPrefix = originStrategy.basePath;
 
-  const linkset: LinksetContext[] = config.apis.map((api) =>
-    buildContextForApi(api, resolvedOrigin.origin, basePathPrefix)
-  );
+  return buildApiCatalogLinksetForOriginInternal(config, resolvedOrigin.origin, { basePathPrefix });
+}
 
-  return { linkset, 'linkset-metadata': buildMetadata(config.publisher) };
+export function buildApiCatalogLinksetForOrigin(
+  config: ApiCatalogConfig,
+  origin: string,
+  options?: BuildForOriginOptions
+): ApiCatalogLinkset {
+  const normalizedStrategy = normalizeOriginStrategy(config.originStrategy);
+  const basePathPrefix = options?.basePathPrefix ?? normalizedStrategy.basePath;
+  return buildApiCatalogLinksetForOriginInternal(config, origin, { basePathPrefix });
 }

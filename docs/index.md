@@ -60,6 +60,131 @@ fastify.register(fastifyApiCatalogPlugin, { config });
 Fastify plugin registers both GET and HEAD routes with the same headers and
 payload semantics.
 
+### Using the origin-based helper
+
+For environments that expose a `Request` object instead of Node's
+`IncomingMessage`—such as the Next.js App Router or Supabase Edge Functions—use
+`buildApiCatalogLinksetForOrigin(config, origin)`. Derive the origin from the
+request URL, build the Linkset once, and return it via the platform's preferred
+response helper.
+
+#### Using with Next.js App Router
+
+```ts
+// app/.well-known/api-catalog/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import type { ApiCatalogConfig } from '@airnub/wellknown-api-catalog';
+import {
+  buildApiCatalogLinksetForOrigin,
+  openApiSpec,
+} from '@airnub/wellknown-api-catalog';
+
+const catalogConfig: ApiCatalogConfig = {
+  publisher: 'example-publisher',
+  apis: [
+    {
+      id: 'example-service-one',
+      title: 'Example Service One API',
+      basePath: '/api/service-one',
+      specs: [
+        openApiSpec('/api/service-one/openapi.json', '3.1'),
+      ],
+    },
+  ],
+};
+
+const RFC9727_PROFILE = 'https://www.rfc-editor.org/info/rfc9727';
+
+export function GET(request: NextRequest) {
+  const origin = new URL(request.url).origin;
+  const linkset = buildApiCatalogLinksetForOrigin(catalogConfig, origin);
+
+  return NextResponse.json(linkset, {
+    status: 200,
+    headers: {
+      'Content-Type': `application/linkset+json; profile="${RFC9727_PROFILE}"`,
+    },
+  });
+}
+
+export function HEAD(request: NextRequest) {
+  const origin = new URL(request.url).origin;
+  const url = `${origin}/.well-known/api-catalog`;
+
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Content-Type': `application/linkset+json; profile="${RFC9727_PROFILE}"`,
+      Link: `<${url}>; rel="api-catalog"`,
+    },
+  });
+}
+```
+
+This pattern works in both the Node.js and Edge runtimes because it never touches
+`IncomingMessage`; the origin is reconstructed via `request.url`.
+
+#### Using with Supabase Edge Functions (Deno)
+
+```ts
+// supabase/functions/api-catalog/index.ts
+import { serve } from 'https://deno.land/std/http/server.ts';
+// Deno can import npm packages via the `npm:` specifier:
+import {
+  buildApiCatalogLinksetForOrigin,
+  openApiSpec,
+  type ApiCatalogConfig,
+} from 'npm:@airnub/wellknown-api-catalog';
+
+const catalogConfig: ApiCatalogConfig = {
+  publisher: 'example-publisher',
+  apis: [
+    {
+      id: 'example-service-one',
+      title: 'Example Service One API',
+      basePath: '/api/service-one',
+      specs: [
+        openApiSpec('/api/service-one/openapi.json', '3.1'),
+      ],
+    },
+  ],
+};
+
+const RFC9727_PROFILE = 'https://www.rfc-editor.org/info/rfc9727';
+
+serve((request: Request): Response => {
+  const url = new URL(request.url);
+
+  if (url.pathname !== '/.well-known/api-catalog') {
+    return new Response('Not found', { status: 404 });
+  }
+
+  const origin = url.origin;
+  const linkset = buildApiCatalogLinksetForOrigin(catalogConfig, origin);
+
+  if (request.method === 'HEAD') {
+    return new Response(null, {
+      status: 200,
+      headers: {
+        'Content-Type': `application/linkset+json; profile="${RFC9727_PROFILE}"`,
+        Link: `<${origin}/.well-known/api-catalog>; rel="api-catalog"`,
+      },
+    });
+  }
+
+  return new Response(JSON.stringify(linkset), {
+    status: 200,
+    headers: {
+      'Content-Type': `application/linkset+json; profile="${RFC9727_PROFILE}"`,
+    },
+  });
+});
+```
+
+Supabase Edge Functions run on Deno and expose the standard Fetch API. Import
+the package via `npm:@airnub/wellknown-api-catalog` and rely on the origin-based
+helper to stay compatible with Deno's npm layer.
+
 ## For AI agents
 
 LLM and coding agents can:

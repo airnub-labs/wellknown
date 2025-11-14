@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildApiCatalogLinkset } from '../src/builder';
+import { buildApiCatalogLinkset, buildApiCatalogLinksetForOrigin } from '../src/builder';
 import type { ApiCatalogConfig } from '../src/types';
 import { createMockRequest } from './test-helpers';
 import { openApiSpec, graphqlSchemaSpec } from '../src/helpers';
@@ -132,5 +132,54 @@ describe('buildApiCatalogLinkset', () => {
     expect(result.linkset[0][API_CATALOG_LINK_REL]).toEqual(
       expect.arrayContaining([expect.objectContaining({ href: '/custom/catalog' })])
     );
+  });
+});
+
+describe('buildApiCatalogLinksetForOrigin', () => {
+  const config: ApiCatalogConfig = {
+    publisher: 'example-publisher',
+    apis: [
+      {
+        id: 'example-service-one',
+        title: 'Example Service One API',
+        basePath: '/api/service-one',
+        specs: [openApiSpec('/api/service-one/openapi.json', '3.1')],
+      },
+    ],
+  };
+
+  it('builds anchors relative to the provided origin without a Node request', () => {
+    const origin = 'https://admin.example.com';
+    const result = buildApiCatalogLinksetForOrigin(config, origin);
+    expect(result.linkset[0].anchor).toBe('https://admin.example.com/api/service-one');
+    expect(result['linkset-metadata']).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ publisher: 'example-publisher' }),
+      ])
+    );
+  });
+
+  it('respects originStrategy basePath prefixes when present in the config', () => {
+    const prefixedConfig: ApiCatalogConfig = {
+      originStrategy: { kind: 'fixed', origin: 'https://catalog.example.com', basePath: '/apis' },
+      apis: [
+        {
+          id: 'prefixed',
+          basePath: '/service-one',
+          specs: [openApiSpec('/service-one/openapi.json', '3.0')],
+        },
+      ],
+    };
+
+    const result = buildApiCatalogLinksetForOrigin(prefixedConfig, 'https://catalog.example.com');
+    expect(result.linkset[0].anchor).toBe('https://catalog.example.com/apis/service-one');
+  });
+
+  it('matches buildApiCatalogLinkset output when given the same origin', () => {
+    const req = createMockRequest({ headers: { host: 'api.example.com' } });
+    const viaRequest = buildApiCatalogLinkset(config, { req });
+    const viaOrigin = buildApiCatalogLinksetForOrigin(config, 'http://api.example.com');
+
+    expect(viaOrigin).toEqual(viaRequest);
   });
 });

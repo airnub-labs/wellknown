@@ -123,6 +123,120 @@ The plugin registers both GET and HEAD routes with identical headers so your
 catalog stays compliant whether clients fetch metadata or just probe the
 endpoint.
 
+### Using with Next.js App Router
+
+When you're building a route handler under `app/.well-known/api-catalog/route.ts`,
+derive the origin from `NextRequest.url` and feed it into the framework-agnostic
+`buildApiCatalogLinksetForOrigin` helper:
+
+```ts
+// app/.well-known/api-catalog/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import type { ApiCatalogConfig } from '@airnub/wellknown-api-catalog';
+import {
+  buildApiCatalogLinksetForOrigin,
+  openApiSpec,
+} from '@airnub/wellknown-api-catalog';
+
+const catalogConfig: ApiCatalogConfig = {
+  publisher: 'example-publisher',
+  apis: [
+    {
+      id: 'example-service-one',
+      title: 'Example Service One API',
+      basePath: '/api/service-one',
+      specs: [openApiSpec('/api/service-one/openapi.json', '3.1')],
+    },
+  ],
+};
+
+const RFC9727_PROFILE = 'https://www.rfc-editor.org/info/rfc9727';
+
+export function GET(request: NextRequest) {
+  const origin = new URL(request.url).origin;
+  const linkset = buildApiCatalogLinksetForOrigin(catalogConfig, origin);
+
+  return NextResponse.json(linkset, {
+    headers: {
+      'Content-Type': `application/linkset+json; profile="${RFC9727_PROFILE}"`,
+    },
+  });
+}
+
+export function HEAD(request: NextRequest) {
+  const origin = new URL(request.url).origin;
+  const url = `${origin}/.well-known/api-catalog`;
+
+  return new NextResponse(null, {
+    headers: {
+      'Content-Type': `application/linkset+json; profile="${RFC9727_PROFILE}"`,
+      Link: `<${url}>; rel="api-catalog"`,
+    },
+  });
+}
+```
+
+`buildApiCatalogLinksetForOrigin` takes a plain `origin` string, so it works in
+both Edge and Node runtimes without relying on Node's `IncomingMessage`.
+
+### Using with Supabase Edge Functions (Deno)
+
+Supabase Edge Functions run on Deno and expose the standard Fetch API. Import
+the package via the npm compatibility layer and reuse the same helper:
+
+```ts
+// supabase/functions/api-catalog/index.ts
+import { serve } from 'https://deno.land/std/http/server.ts';
+import {
+  buildApiCatalogLinksetForOrigin,
+  openApiSpec,
+  type ApiCatalogConfig,
+} from 'npm:@airnub/wellknown-api-catalog';
+
+const catalogConfig: ApiCatalogConfig = {
+  publisher: 'example-publisher',
+  apis: [
+    {
+      id: 'example-service-one',
+      title: 'Example Service One API',
+      basePath: '/api/service-one',
+      specs: [openApiSpec('/api/service-one/openapi.json', '3.1')],
+    },
+  ],
+};
+
+const RFC9727_PROFILE = 'https://www.rfc-editor.org/info/rfc9727';
+
+serve((request: Request): Response => {
+  const url = new URL(request.url);
+
+  if (url.pathname !== '/.well-known/api-catalog') {
+    return new Response('Not found', { status: 404 });
+  }
+
+  const origin = url.origin;
+  const linkset = buildApiCatalogLinksetForOrigin(catalogConfig, origin);
+
+  if (request.method === 'HEAD') {
+    return new Response(null, {
+      headers: {
+        'Content-Type': `application/linkset+json; profile="${RFC9727_PROFILE}"`,
+        Link: `<${origin}/.well-known/api-catalog>; rel="api-catalog"`,
+      },
+    });
+  }
+
+  return new Response(JSON.stringify(linkset), {
+    headers: {
+      'Content-Type': `application/linkset+json; profile="${RFC9727_PROFILE}"`,
+    },
+  });
+});
+```
+
+By staying within the Fetch API surface area you avoid Node-specific globals and
+keep the same catalog logic across Express, Fastify, Next.js, and Supabase.
+
 ## Linkset output
 
 `buildApiCatalogLinkset` returns a payload that mirrors RFC 9264:
