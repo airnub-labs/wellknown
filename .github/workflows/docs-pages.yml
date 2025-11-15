@@ -69,9 +69,7 @@ jobs:
                     routeBasePath: '/',
                     sidebarPath: require.resolve('./sidebars.js'),
                   },
-                  theme: {
-                    customCss: [],
-                  },
+                  theme: {},
                 },
               ],
             ],
