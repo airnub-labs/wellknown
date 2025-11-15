@@ -159,10 +159,7 @@ Implement the following modules in packages/api-catalog/src:
 1. Config Types (src/types.ts)
 Define high-level config types:
 
-ts
-Copy code
-// src/types.ts
-
+```ts title="src/types.ts"
 export interface LinkObject {
   href: string;
   type?: string;
@@ -225,13 +222,11 @@ export interface ApiCatalogConfig {
   originStrategy?: OriginStrategy;
   apis: ApiEntryConfig[];
 }
+```
 2. Linkset Types (src/linkset.ts)
 Model the Linkset JSON wire format:
 
-ts
-Copy code
-// src/linkset.ts
-
+```ts title="src/linkset.ts"
 import type { LinkObject } from "./types";
 
 /** A single linkset context (one anchor with various link relations). */
@@ -253,13 +248,11 @@ export interface LinksetContext {
 export interface ApiCatalogLinkset {
   linkset: LinksetContext[];
 }
+```
 3. Origin Resolution (src/origin.ts)
 Implement robust origin resolution using forwarded-http:
 
-ts
-Copy code
-// src/origin.ts
-
+```ts title="src/origin.ts"
 import type { IncomingMessage } from "http";
 import { forwarded } from "forwarded-http";
 import type { OriginStrategy, TrustProxySetting } from "./types";
@@ -330,15 +323,13 @@ export function resolveOrigin({ strategy, req }: ResolveOriginOptions): OriginRe
   const origin = `${scheme}://${host.replace(/\/+$/, "")}`;
   return { scheme, host, origin };
 }
+```
 Adjust the exact use of forwarded-http based on its API (import name, return shape); ensure tests verify the behaviour.
 
 4. Catalog Builder (src/builder.ts)
 Implement the core builder:
 
-ts
-Copy code
-// src/builder.ts
-
+```ts title="src/builder.ts"
 import type { IncomingMessage } from "http";
 import type {
   ApiCatalogConfig,
@@ -396,12 +387,10 @@ export function buildApiCatalogLinkset(
 
   return { linkset };
 }
+```
 5. HTTP Adapters
 5.1 Express (src/handlers/express.ts)
-ts
-Copy code
-// src/handlers/express.ts
-
+```ts title="src/handlers/express.ts"
 import type { Request, Response, NextFunction } from "express";
 import type { ApiCatalogConfig } from "../types";
 import { buildApiCatalogLinkset } from "../builder";
@@ -443,10 +432,10 @@ export function createExpressApiCatalogHeadHandler() {
     res.status(200).setHeader("Link", `<${url}>; rel="api-catalog"`).end();
   };
 }
+```
 Express usage example for README:
 
-ts
-Copy code
+```ts
 import express from "express";
 import {
   createExpressApiCatalogHandler,
@@ -458,11 +447,9 @@ const app = express();
 
 app.get("/.well-known/api-catalog", createExpressApiCatalogHandler(catalogConfig));
 app.head("/.well-known/api-catalog", createExpressApiCatalogHeadHandler());
+```
 5.2 Fastify (src/handlers/fastify.ts)
-ts
-Copy code
-// src/handlers/fastify.ts
-
+```ts title="src/handlers/fastify.ts"
 import type { FastifyPluginCallback } from "fastify";
 import type { ApiCatalogConfig } from "../types";
 import { buildApiCatalogLinkset } from "../builder";
@@ -503,13 +490,11 @@ export const fastifyApiCatalogPlugin: FastifyPluginCallback<FastifyApiCatalogPlu
 
   done();
 };
+```
 6. Helpers (src/helpers.ts)
 Provide convenience helpers (spec-agnostic core; helpers are opinionated sugar):
 
-ts
-Copy code
-// src/helpers.ts
-
+```ts title="src/helpers.ts"
 import type { ApiSpecRef } from "./types";
 
 export function openApiSpec(path: string, version: "3.0" | "3.1" = "3.1"): ApiSpecRef {
@@ -535,13 +520,11 @@ export function graphqlSchemaSpec(path: string): ApiSpecRef {
     title: "GraphQL schema",
   };
 }
+```
 7. Public Entry (src/index.ts)
 Re-export all public APIs:
 
-ts
-Copy code
-// src/index.ts
-
+```ts title="src/index.ts"
 export * from "./types";
 export * from "./linkset";
 export * from "./origin";
@@ -549,6 +532,7 @@ export * from "./builder";
 export * from "./handlers/express";
 export * from "./handlers/fastify";
 export * from "./helpers";
+```
 ────────────────────────────────────
 Testing with Vitest
 ────────────────────────────────────
@@ -669,15 +653,14 @@ Quickstart
 
 Installation:
 
-bash
-Copy code
+```bash
 pnpm add @airnub/wellknown-api-catalog@next
 # or
 npm install @airnub/wellknown-api-catalog@next
+```
 Example config:
 
-ts
-Copy code
+```ts
 import type { ApiCatalogConfig } from "@airnub/wellknown-api-catalog";
 import { openApiSpec, graphqlSchemaSpec } from "@airnub/wellknown-api-catalog";
 
@@ -709,6 +692,7 @@ export const catalogConfig: ApiCatalogConfig = {
     },
   ],
 };
+```
 Express integration snippet as above.
 
 Fastify integration snippet as above.
