@@ -144,119 +144,75 @@ const apiEntry: LinksetContext = {
 
 ## Recommendations for AI Agent Extensions
 
-### 1. **Create Helper Function for AI-Enriched Metadata**
+### Focus: Token-Efficient Metadata
 
-The current implementation already supports custom metadata, but you could provide a helper:
+AI agents should be able to **filter APIs without reading full OpenAPI specs**. The most valuable metadata:
+
+1. **`x-auth`** - Authentication requirements (method, location, header name)
+2. **`x-description`** - Human-readable API purpose (1-2 sentences)
+3. **`x-stability`** - Lifecycle status (experimental, beta, stable, deprecated)
+4. **`x-rate-limit`** - Request quotas (per minute/hour/day)
+
+**Example Extension:**
 
 ```typescript
-// New helper in helpers.ts
-export function aiAgentMetadata(hints: {
-  authMethod?: string;
-  rateLimitInfo?: { tier: string; requestsPerHour?: number };
-  semanticTags?: string[];
-  contextDescription?: string;
-  stability?: 'experimental' | 'beta' | 'stable' | 'deprecated';
-}): Partial<LinksetMetadata> {
-  return {
-    'x-ai-agent-hints': {
-      authMethod: hints.authMethod,
-      rateLimit: hints.rateLimitInfo,
-      stability: hints.stability
-    },
-    'x-semantic-tags': hints.semanticTags,
-    'x-llm-context': hints.contextDescription
-  };
-}
-```
-
-**Usage:**
-```typescript
-const config: ApiCatalogConfig = {
-  publisher: 'acme-corp',
-  apis: [
-    {
-      id: 'payments-api',
-      basePath: '/api/payments',
-      specs: [openApiSpec('/api/payments/openapi.json')]
-    }
-  ]
-};
-
-// Extend metadata in builder.ts:49-55
-function buildMetadata(publisher?: string, aiHints?: ReturnType<typeof aiAgentMetadata>): LinksetMetadata[] {
-  const metadata: LinksetMetadata = {
-    profile: RFC9727_PROFILE,
-    ...aiHints  // ✅ Merge AI extensions
-  };
-  if (publisher) {
-    metadata.publisher = publisher;
-  }
-  return [metadata];
-}
-```
-
-### 2. **Document Extension Convention**
-
-Create a new documentation file:
-
-**`docs/AI_AGENT_EXTENSIONS.md`**
-```markdown
-# AI Agent Extension Guidelines
-
-## Custom Metadata Properties
-
-The `linkset-metadata` object supports custom properties via the `[key: string]: unknown` index signature. We recommend prefixing custom properties with `x-` to indicate vendor extensions:
-
-### Recommended Extensions
-
-- `x-ai-agent-hints`: Object containing AI-specific metadata
-- `x-semantic-tags`: Array of semantic tags for agent categorization
-- `x-llm-context`: Human-readable context description for LLM consumption
-- `x-stability-level`: API stability indicator (`experimental`, `beta`, `stable`, `deprecated`)
-
-### Example
-
-\`\`\`typescript
-const metadata: LinksetMetadata = {
+const extendedMetadata: LinksetMetadata = {
   profile: 'https://www.rfc-editor.org/info/rfc9727',
   publisher: 'acme-corp',
-  'x-ai-agent-hints': {
-    authMethod: 'oauth2',
-    rateLimitTier: 'premium',
-    cacheTTLSeconds: 300
+  'x-auth': {
+    method: 'bearer',
+    location: 'header',
+    headerName: 'Authorization',
+    docsUrl: 'https://docs.example.com/auth'
   },
-  'x-semantic-tags': ['payments', 'financial', 'pci-compliant'],
-  'x-llm-context': 'Payment processing API with real-time fraud detection',
-  'x-stability-level': 'stable'
+  'x-description': 'Payment processing API for credit cards and ACH. Supports refunds, recurring billing, and fraud detection.',
+  'x-stability': 'stable',
+  'x-rate-limit': {
+    requestsPerMinute: 100,
+    requestsPerHour: 5000
+  }
 };
-\`\`\`
 ```
 
-### 3. **Extend ApiCatalogConfig Interface**
+**Benefits:**
+- ✅ Agent knows auth method before fetching spec
+- ✅ Agent understands purpose without reading spec
+- ✅ Agent can check quotas before using API
+- ✅ Agent avoids deprecated APIs
+- ✅ Saves tokens by avoiding unnecessary spec downloads
 
-Allow users to pass custom metadata directly:
+### 2. **Extension Naming Convention**
+
+Use the `x-` prefix for all custom extensions to indicate vendor-specific metadata:
+- ✅ `x-auth` - Authentication metadata
+- ✅ `x-description` - Human-readable description
+- ✅ `x-stability` - Lifecycle status
+- ✅ `x-rate-limit` - Rate limiting info
+
+This follows standard HTTP header convention and makes it clear these are extensions.
+
+### 3. **Implementation Approach**
+
+Users can extend catalogs after building them:
 
 ```typescript
-// types.ts
-export interface ApiCatalogConfig {
-  publisher?: string;
-  originStrategy?: OriginStrategy;
-  apis: ApiEntryConfig[];
-  metadata?: Record<string, unknown>;  // ✅ New field for custom extensions
-}
+// Build base catalog
+const baseLinkset = buildApiCatalogLinksetForOrigin(config, origin);
 
-// builder.ts
-function buildMetadata(config: ApiCatalogConfig): LinksetMetadata[] {
-  const metadata: LinksetMetadata = {
-    profile: RFC9727_PROFILE,
-    ...config.metadata  // ✅ Spread custom metadata
-  };
-  if (config.publisher) {
-    metadata.publisher = config.publisher;
-  }
-  return [metadata];
-}
+// Extend with AI metadata
+const extendedLinkset = {
+  ...baseLinkset,
+  'linkset-metadata': [{
+    ...baseLinkset['linkset-metadata']![0],
+    'x-auth': { method: 'bearer', location: 'header', headerName: 'Authorization' },
+    'x-description': 'Payment processing API...',
+    'x-stability': 'stable',
+    'x-rate-limit': { requestsPerMinute: 100 }
+  }]
+};
 ```
+
+See `docs/AI_AGENT_EXTENSIONS.md` for complete examples and helper function patterns.
 
 ---
 
@@ -310,18 +266,18 @@ These are **optional** features that could enhance the library but are not requi
 ### Recommendations Priority
 
 **High Priority:**
-1. Document extension conventions (create `AI_AGENT_EXTENSIONS.md`)
-2. Add optional `metadata` field to `ApiCatalogConfig` for user-supplied extensions
-3. Create helper function for common AI agent metadata patterns
+1. ✅ Document extension conventions (`docs/AI_AGENT_EXTENSIONS.md` - COMPLETED)
+2. Promote AI metadata extensions in main README
+3. Add example showing token savings from using metadata
 
 **Medium Priority:**
 4. Add Link header to GET responses (consistency with HEAD)
-5. Document rate-limiting best practices
-6. Add examples of extended metadata in README
+5. Document rate-limiting best practices in main README
+6. Consider adding caching headers (Cache-Control, ETag) for catalog polling
 
 **Low Priority:**
 7. Consider content negotiation for HTML catalog view
-8. Add caching header support
+8. Optional `metadata` field in `ApiCatalogConfig` for simpler extension
 
 ---
 

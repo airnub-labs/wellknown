@@ -48,64 +48,35 @@ export interface LinksetContext {
 
 ## Recommended AI Agent Extensions
 
-### Extension Namespace Convention
+### Focus: High-Value Metadata to Avoid Reading Full Specs
 
-We recommend the following namespace prefixes:
+These extensions provide **essential information** that agents need before fetching and parsing entire OpenAPI documents, saving tokens and reducing latency.
 
-| Prefix | Purpose | Example |
-|--------|---------|---------|
-| `x-ai-` | AI agent hints and metadata | `x-ai-agent-hints` |
-| `x-semantic-` | Semantic categorization | `x-semantic-tags` |
-| `x-llm-` | LLM-specific context | `x-llm-context` |
-| `x-stability-` | API lifecycle information | `x-stability-level` |
-| `x-performance-` | Performance characteristics | `x-performance-sla` |
-
-### Suggested Metadata Schema
+### Core Extension Schema
 
 ```typescript
 interface AIAgentMetadataExtensions {
-  // Authentication and authorization hints
-  'x-ai-agent-hints'?: {
-    authMethod?: 'none' | 'api-key' | 'oauth2' | 'jwt' | 'custom';
-    authLocation?: 'header' | 'query' | 'cookie';
-    authDocUrl?: string;
-    requiresApproval?: boolean;
+  // Authentication requirements (saves parsing security schemes from spec)
+  'x-auth'?: {
+    method: 'none' | 'api-key' | 'oauth2' | 'bearer' | 'basic' | 'custom';
+    location?: 'header' | 'query' | 'cookie';  // Where to send credentials
+    headerName?: string;  // e.g., 'X-API-Key', 'Authorization'
+    docsUrl?: string;  // Link to auth setup instructions
+    scopes?: string[];  // Required OAuth scopes
   };
 
-  // Rate limiting information
+  // Human-readable description for LLM understanding
+  'x-description': string;  // What this API does, in plain language
+
+  // API stability and lifecycle (should agents use this?)
+  'x-stability': 'experimental' | 'beta' | 'stable' | 'deprecated';
+
+  // Rate limiting (prevent quota exhaustion)
   'x-rate-limit'?: {
-    tier?: string;
-    requestsPerHour?: number;
     requestsPerMinute?: number;
-    burstLimit?: number;
+    requestsPerHour?: number;
+    requestsPerDay?: number;
   };
-
-  // Semantic categorization
-  'x-semantic-tags'?: string[];
-
-  // LLM context description
-  'x-llm-context'?: string;
-
-  // API stability and lifecycle
-  'x-stability-level'?: 'experimental' | 'beta' | 'stable' | 'deprecated';
-  'x-sunset-date'?: string;  // ISO 8601 date
-
-  // Performance characteristics
-  'x-performance-sla'?: {
-    avgLatencyMs?: number;
-    p99LatencyMs?: number;
-    availabilityPercent?: number;
-  };
-
-  // Cost information
-  'x-cost-info'?: {
-    pricingModel?: 'free' | 'freemium' | 'paid' | 'usage-based';
-    pricingUrl?: string;
-  };
-
-  // Compliance and security
-  'x-compliance'?: string[];  // e.g., ['GDPR', 'SOC2', 'HIPAA']
-  'x-data-residency'?: string[];  // e.g., ['US', 'EU', 'APAC']
 }
 ```
 
@@ -157,43 +128,24 @@ const config: ApiCatalogConfig = {
 const origin = 'https://api.example.com';
 const baseLinkset = buildApiCatalogLinksetForOrigin(config, origin);
 
-// Extend with AI agent metadata
+// Extend with essential AI agent metadata
 const extendedLinkset: ApiCatalogLinkset = {
   ...baseLinkset,
   'linkset-metadata': [
     {
       ...baseLinkset['linkset-metadata']![0],
-      'x-ai-agent-hints': {
-        authMethod: 'oauth2',
-        authLocation: 'header',
-        authDocUrl: 'https://docs.example.com/auth',
-        requiresApproval: true
+      'x-auth': {
+        method: 'bearer',
+        location: 'header',
+        headerName: 'Authorization',
+        docsUrl: 'https://docs.example.com/auth'
       },
+      'x-description': 'Real-time ML inference API for image classification, NLP sentiment analysis, and time-series forecasting. Requires authentication and has rate limits.',
+      'x-stability': 'stable',
       'x-rate-limit': {
-        tier: 'premium',
-        requestsPerHour: 10000,
-        requestsPerMinute: 200,
-        burstLimit: 500
-      },
-      'x-semantic-tags': [
-        'machine-learning',
-        'predictions',
-        'real-time',
-        'high-compute'
-      ],
-      'x-llm-context': 'High-performance ML inference API providing real-time predictions for image classification, NLP, and time-series forecasting. Requires OAuth2 authentication and has usage quotas.',
-      'x-stability-level': 'stable',
-      'x-performance-sla': {
-        avgLatencyMs: 150,
-        p99LatencyMs: 450,
-        availabilityPercent: 99.9
-      },
-      'x-cost-info': {
-        pricingModel: 'usage-based',
-        pricingUrl: 'https://example.com/pricing'
-      },
-      'x-compliance': ['SOC2', 'GDPR', 'ISO27001'],
-      'x-data-residency': ['US', 'EU']
+        requestsPerMinute: 60,
+        requestsPerHour: 1000
+      }
     }
   ]
 };
@@ -210,21 +162,27 @@ Create a reusable helper in your codebase:
 import type { ApiCatalogLinkset, LinksetMetadata } from '@airnub/wellknown-api-catalog';
 
 interface AIMetadataOptions {
-  authMethod?: 'none' | 'api-key' | 'oauth2' | 'jwt';
-  authDocUrl?: string;
-  requiresApproval?: boolean;
-  rateLimitTier?: string;
-  requestsPerHour?: number;
-  semanticTags?: string[];
-  llmContext?: string;
-  stabilityLevel?: 'experimental' | 'beta' | 'stable' | 'deprecated';
-  sunsetDate?: string;
-  avgLatencyMs?: number;
-  availabilityPercent?: number;
-  pricingModel?: 'free' | 'freemium' | 'paid' | 'usage-based';
-  pricingUrl?: string;
-  compliance?: string[];
-  dataResidency?: string[];
+  // Auth info (required for most APIs)
+  auth?: {
+    method: 'none' | 'api-key' | 'oauth2' | 'bearer' | 'basic' | 'custom';
+    location?: 'header' | 'query' | 'cookie';
+    headerName?: string;
+    docsUrl?: string;
+    scopes?: string[];
+  };
+
+  // Human-readable description (helps LLMs understand purpose)
+  description: string;
+
+  // API stability
+  stability: 'experimental' | 'beta' | 'stable' | 'deprecated';
+
+  // Rate limits (prevents quota exhaustion)
+  rateLimit?: {
+    requestsPerMinute?: number;
+    requestsPerHour?: number;
+    requestsPerDay?: number;
+  };
 }
 
 export function extendCatalogWithAIMetadata(
@@ -234,70 +192,17 @@ export function extendCatalogWithAIMetadata(
   const baseMetadata = baseLinkset['linkset-metadata']?.[0] || {};
 
   const extendedMetadata: LinksetMetadata = {
-    ...baseMetadata
+    ...baseMetadata,
+    'x-description': aiOptions.description,
+    'x-stability': aiOptions.stability
   };
 
-  // Add AI agent hints
-  if (aiOptions.authMethod || aiOptions.authDocUrl || aiOptions.requiresApproval) {
-    extendedMetadata['x-ai-agent-hints'] = {
-      authMethod: aiOptions.authMethod,
-      authDocUrl: aiOptions.authDocUrl,
-      requiresApproval: aiOptions.requiresApproval
-    };
+  if (aiOptions.auth) {
+    extendedMetadata['x-auth'] = aiOptions.auth;
   }
 
-  // Add rate limit info
-  if (aiOptions.rateLimitTier || aiOptions.requestsPerHour) {
-    extendedMetadata['x-rate-limit'] = {
-      tier: aiOptions.rateLimitTier,
-      requestsPerHour: aiOptions.requestsPerHour
-    };
-  }
-
-  // Add semantic tags
-  if (aiOptions.semanticTags && aiOptions.semanticTags.length > 0) {
-    extendedMetadata['x-semantic-tags'] = aiOptions.semanticTags;
-  }
-
-  // Add LLM context
-  if (aiOptions.llmContext) {
-    extendedMetadata['x-llm-context'] = aiOptions.llmContext;
-  }
-
-  // Add stability level
-  if (aiOptions.stabilityLevel) {
-    extendedMetadata['x-stability-level'] = aiOptions.stabilityLevel;
-  }
-
-  // Add sunset date
-  if (aiOptions.sunsetDate) {
-    extendedMetadata['x-sunset-date'] = aiOptions.sunsetDate;
-  }
-
-  // Add performance SLA
-  if (aiOptions.avgLatencyMs || aiOptions.availabilityPercent) {
-    extendedMetadata['x-performance-sla'] = {
-      avgLatencyMs: aiOptions.avgLatencyMs,
-      availabilityPercent: aiOptions.availabilityPercent
-    };
-  }
-
-  // Add cost info
-  if (aiOptions.pricingModel || aiOptions.pricingUrl) {
-    extendedMetadata['x-cost-info'] = {
-      pricingModel: aiOptions.pricingModel,
-      pricingUrl: aiOptions.pricingUrl
-    };
-  }
-
-  // Add compliance
-  if (aiOptions.compliance && aiOptions.compliance.length > 0) {
-    extendedMetadata['x-compliance'] = aiOptions.compliance;
-  }
-
-  // Add data residency
-  if (aiOptions.dataResidency && aiOptions.dataResidency.length > 0) {
-    extendedMetadata['x-data-residency'] = aiOptions.dataResidency;
+  if (aiOptions.rateLimit) {
+    extendedMetadata['x-rate-limit'] = aiOptions.rateLimit;
   }
 
   return {
@@ -331,20 +236,18 @@ export function GET(request: NextRequest) {
   const baseLinkset = buildApiCatalogLinksetForOrigin(config, origin);
 
   const extendedLinkset = extendCatalogWithAIMetadata(baseLinkset, {
-    authMethod: 'oauth2',
-    authDocUrl: 'https://docs.example.com/auth',
-    requiresApproval: true,
-    rateLimitTier: 'premium',
-    requestsPerHour: 10000,
-    semanticTags: ['payments', 'financial', 'pci-compliant'],
-    llmContext: 'Secure payment processing API with PCI DSS Level 1 certification',
-    stabilityLevel: 'stable',
-    avgLatencyMs: 200,
-    availabilityPercent: 99.99,
-    pricingModel: 'usage-based',
-    pricingUrl: 'https://example.com/pricing',
-    compliance: ['PCI-DSS', 'SOC2', 'GDPR'],
-    dataResidency: ['US', 'EU']
+    auth: {
+      method: 'bearer',
+      location: 'header',
+      headerName: 'Authorization',
+      docsUrl: 'https://docs.example.com/auth'
+    },
+    description: 'Secure payment processing API for credit cards, ACH, and digital wallets. Supports refunds, recurring billing, and fraud detection.',
+    stability: 'stable',
+    rateLimit: {
+      requestsPerMinute: 100,
+      requestsPerHour: 5000
+    }
   });
 
   return NextResponse.json(extendedLinkset, {
@@ -404,72 +307,93 @@ const config: ApiCatalogConfig = {
 
 ## AI Agent Consumption Pattern
 
-### Discovery Flow
+### Discovery Flow (Token-Efficient)
 
 ```typescript
-// 1. Agent fetches the catalog
+// 1. Agent fetches the catalog (small payload, no full spec yet)
 const catalogResponse = await fetch('https://api.example.com/.well-known/api-catalog');
 const catalog = await catalogResponse.json();
 
-// 2. Agent reads AI-specific metadata
+// 2. Agent reads essential metadata WITHOUT fetching the full OpenAPI spec
 const metadata = catalog['linkset-metadata']?.[0];
-const aiHints = metadata?.['x-ai-agent-hints'];
-const semanticTags = metadata?.['x-semantic-tags'];
-const llmContext = metadata?.['x-llm-context'];
-const stability = metadata?.['x-stability-level'];
+const auth = metadata?.['x-auth'];
+const description = metadata?.['x-description'];
+const stability = metadata?.['x-stability'];
+const rateLimit = metadata?.['x-rate-limit'];
 
-// 3. Agent decides whether to use this API
+// 3. Agent makes quick decisions based on metadata alone
 if (stability === 'deprecated') {
-  console.warn('API is deprecated, considering alternatives');
+  console.warn('API is deprecated, skipping');
+  return;
 }
 
-if (aiHints?.requiresApproval) {
-  console.log('API requires manual approval before use');
+if (auth?.method === 'oauth2' && !hasOAuthSetup()) {
+  console.log('Requires OAuth2, user needs to authorize first');
+  return;
 }
 
-// 4. Agent uses semantic tags for relevance matching
-const isRelevant = semanticTags?.some(tag =>
-  ['payments', 'financial'].includes(tag)
-);
+if (rateLimit && rateLimit.requestsPerMinute < requiredThroughput) {
+  console.log('Rate limit too low for this use case');
+  return;
+}
 
-// 5. Agent reads LLM context for understanding
-console.log('API Purpose:', llmContext);
+// 4. Agent understands API purpose from description (saves reading spec)
+console.log('API does:', description);
+// Agent can now decide if this API matches the task
 
-// 6. Agent fetches OpenAPI spec from service-desc link
+// 5. Only NOW fetch the full OpenAPI spec (if needed)
 const apiEntry = catalog.linkset[0];
 const openApiLink = apiEntry['service-desc']?.[0];
 if (openApiLink?.href) {
   const specResponse = await fetch(new URL(openApiLink.href, 'https://api.example.com'));
   const openApiSpec = await specResponse.json();
-  // Agent now has full API schema
+  // Agent now has full API schema for detailed operations
 }
 ```
+
+**Token Savings:** Agent can filter out incompatible APIs based on auth, stability, and description **before** downloading and parsing potentially large OpenAPI specs.
 
 ---
 
 ## Best Practices
 
-### 1. Keep Extensions Minimal
-Only add extensions that provide **actionable value** for AI agents. Avoid duplicating information already in OpenAPI specs.
+### 1. Focus on Pre-Spec Decisions
+Only include metadata that helps agents **decide whether to fetch the full spec**:
+- ✅ Auth requirements (agent needs credentials first)
+- ✅ Rate limits (agent needs to know quotas)
+- ✅ Stability (agent shouldn't use deprecated APIs)
+- ✅ Description (agent needs to understand purpose)
+- ❌ Don't duplicate detailed info from OpenAPI spec
 
-### 2. Use Semantic Tags Thoughtfully
-Tags should help agents **categorize and filter** APIs:
-- ✅ Good: `['payments', 'real-time', 'high-security']`
-- ❌ Bad: `['api', 'rest', 'json']` (too generic)
+### 2. Write Clear, Concise Descriptions
+The `x-description` should help LLMs understand the API's **purpose and capabilities** in 1-2 sentences:
+- ✅ Good: "Payment processing API for credit cards and ACH. Supports refunds, recurring billing, and fraud detection."
+- ❌ Bad: "This is our API" (too vague)
+- ❌ Bad: "An API that provides access to our payment processing system which allows users to..." (too verbose)
 
-### 3. Write Clear LLM Context
-The `x-llm-context` should be a **concise, informative description** that helps LLMs understand the API's purpose:
-- ✅ Good: "Real-time payment processing with fraud detection and PCI compliance"
-- ❌ Bad: "This is our API" (not informative)
+### 3. Be Explicit About Auth
+Always include `x-auth` if authentication is required. Agents need to know:
+- What method to use (`bearer`, `api-key`, `oauth2`, etc.)
+- Where to send credentials (`header`, `query`, `cookie`)
+- What header name to use (e.g., `Authorization`, `X-API-Key`)
+- Where to get credentials (`docsUrl`)
 
-### 4. Document Your Extensions
-If you add custom extensions beyond these recommendations, document them in your API documentation.
-
-### 5. Version Your Extensions
-If you make breaking changes to your extension schema, consider versioning:
+### 4. Set Realistic Rate Limits
+Help agents avoid hitting quotas by being transparent about limits:
 ```typescript
-'x-ai-agent-hints-v2': { ... }
+'x-rate-limit': {
+  requestsPerMinute: 60,   // Most common limit
+  requestsPerHour: 1000,   // Secondary limit
+  requestsPerDay: 10000    // Hard daily cap
+}
 ```
+
+### 5. Keep Stability Current
+Update `x-stability` as your API evolves:
+- `experimental` → Agent should expect breaking changes
+- `beta` → Agent can use but should monitor for changes
+- `stable` → Agent can rely on this API
+- `deprecated` → Agent should find alternatives
 
 ---
 
@@ -498,10 +422,10 @@ Here's what an AI-enriched catalog looks like:
 {
   "linkset": [
     {
-      "anchor": "https://api.example.com/api/ml",
+      "anchor": "https://api.example.com/api/payments",
       "service-desc": [
         {
-          "href": "/api/ml/openapi.json",
+          "href": "/api/payments/openapi.json",
           "type": "application/vnd.oai.openapi+json",
           "profile": "https://spec.openapis.org/oas/3.1",
           "title": "OpenAPI 3.1 spec"
@@ -509,15 +433,8 @@ Here's what an AI-enriched catalog looks like:
       ],
       "service-doc": [
         {
-          "href": "https://docs.example.com/ml",
+          "href": "https://docs.example.com/payments",
           "type": "text/html"
-        }
-      ],
-      "x-ai-playground": [
-        {
-          "href": "https://playground.example.com/ml",
-          "type": "text/html",
-          "title": "Interactive ML Playground"
         }
       ]
     }
@@ -526,39 +443,31 @@ Here's what an AI-enriched catalog looks like:
     {
       "profile": "https://www.rfc-editor.org/info/rfc9727",
       "publisher": "acme-corp",
-      "x-ai-agent-hints": {
-        "authMethod": "oauth2",
-        "authLocation": "header",
-        "authDocUrl": "https://docs.example.com/auth",
-        "requiresApproval": true
+      "x-auth": {
+        "method": "bearer",
+        "location": "header",
+        "headerName": "Authorization",
+        "docsUrl": "https://docs.example.com/auth"
       },
+      "x-description": "Payment processing API for credit cards, ACH, and digital wallets. Supports refunds, recurring billing, and fraud detection.",
+      "x-stability": "stable",
       "x-rate-limit": {
-        "tier": "premium",
-        "requestsPerHour": 10000,
-        "requestsPerMinute": 200
-      },
-      "x-semantic-tags": [
-        "machine-learning",
-        "predictions",
-        "real-time"
-      ],
-      "x-llm-context": "High-performance ML inference API providing real-time predictions for image classification and NLP tasks",
-      "x-stability-level": "stable",
-      "x-performance-sla": {
-        "avgLatencyMs": 150,
-        "p99LatencyMs": 450,
-        "availabilityPercent": 99.9
-      },
-      "x-cost-info": {
-        "pricingModel": "usage-based",
-        "pricingUrl": "https://example.com/pricing"
-      },
-      "x-compliance": ["SOC2", "GDPR"],
-      "x-data-residency": ["US", "EU"]
+        "requestsPerMinute": 100,
+        "requestsPerHour": 5000,
+        "requestsPerDay": 50000
+      }
     }
   ]
 }
 ```
+
+**This compact metadata tells agents:**
+- ✅ How to authenticate (Bearer token in Authorization header)
+- ✅ What the API does (payment processing with specific features)
+- ✅ API stability (production-ready)
+- ✅ Rate limits (avoid quota exhaustion)
+
+**All before downloading the potentially large OpenAPI spec!**
 
 ---
 
@@ -566,8 +475,13 @@ Here's what an AI-enriched catalog looks like:
 
 ✅ **Extensions are fully supported** through existing TypeScript index signatures
 ✅ **RFC 9264 allows** custom properties as long as they don't break standard semantics
-✅ **Use the `x-` prefix** to indicate vendor extensions
-✅ **Focus on actionable metadata** that helps AI agents make decisions
-✅ **Document your extensions** and share patterns with the community
+✅ **Focus on high-value metadata** that saves agents from reading full specs:
+   - **`x-auth`** - Authentication method, location, and header name
+   - **`x-description`** - Human-readable API purpose (1-2 sentences)
+   - **`x-stability`** - API lifecycle status
+   - **`x-rate-limit`** - Request quotas to prevent exhaustion
+
+✅ **Token-efficient** - Agents can filter APIs before downloading large OpenAPI specs
+✅ **No code changes needed** - Start adding metadata today using the helper patterns above
 
 The `@airnub/wellknown-api-catalog` package is **ready for AI agent metadata** without any code changes—you can start adding custom metadata today!
