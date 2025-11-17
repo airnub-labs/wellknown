@@ -95,7 +95,3 @@ export const fastifyApiCatalogPlugin: FastifyPluginCallback<FastifyApiCatalogPlu
   registerFastifyApiCatalog(fastify, opts.config);
   done();
 };
-
-/** @deprecated Use registerFastifyApiCatalog instead. */
-export const registerFastifyApiCatalogRoutes = registerFastifyApiCatalog;
-

@@ -1,10 +1,6 @@
 import Fastify from 'fastify';
 import { describe, expect, it } from 'vitest';
-import {
-  fastifyApiCatalogPlugin,
-  registerFastifyApiCatalog,
-  registerFastifyApiCatalogRoutes,
-} from '../src/handlers/fastify';
+import { fastifyApiCatalogPlugin, registerFastifyApiCatalog } from '../src/handlers/fastify';
 import type { ApiCatalogConfig } from '../src/types';
 import { openApiSpec } from '../src/helpers';
 
@@ -67,19 +63,5 @@ describe('Fastify handlers', () => {
     expect(getRes.headers['content-type']).toContain('application/linkset+json');
     const body = getRes.json();
     expect(body.linkset[0].anchor).toBe('http://api.example.com/apis/service-one');
-  });
-
-  it('keeps deprecated registerFastifyApiCatalogRoutes for backwards compatibility', async () => {
-    const fastify = Fastify();
-    registerFastifyApiCatalogRoutes(fastify, config);
-
-    const res = await fastify.inject({
-      method: 'GET',
-      url: '/.well-known/api-catalog',
-      headers: { host: 'api.example.com' },
-      remoteAddress: '127.0.0.1',
-    });
-
-    expect(res.statusCode).toBe(200);
   });
 });
