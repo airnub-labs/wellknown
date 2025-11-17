@@ -57,56 +57,27 @@ npm install @airnub/wellknown-api-catalog@next
 
 ## Quickstart
 
-```ts
-import type { ApiCatalogConfig } from '@airnub/wellknown-api-catalog';
-import { openApiSpec, graphqlSchemaSpec } from '@airnub/wellknown-api-catalog';
+All RFC complexity (well-known paths, Content-Types, profile URIs) is handled automatically.
 
-export const catalogConfig: ApiCatalogConfig = {
-  publisher: 'example-publisher',
-  originStrategy: { kind: 'fromRequest', trustProxy: false },
-  apis: [
-    {
-      id: 'example-service-one',
-      title: 'Example Service One API',
-      basePath: '/apis/service-one',
-      specs: [
-        openApiSpec('/apis/service-one/openapi.json', '3.1'),
-        {
-          rel: 'service-doc',
-          href: 'https://docs.example.com/service-one',
-          type: 'text/html',
-          title: 'HTML docs',
-        },
-      ],
-    },
-    {
-      id: 'example-service-two',
-      title: 'Example Service Two API',
-      basePath: '/apis/service-two',
-      specs: [graphqlSchemaSpec('/apis/service-two/schema.graphql')],
-    },
-  ],
-};
-```
-
-### Express
+### Express (Simplified)
 
 ```ts
 import express from 'express';
-import {
-  createExpressApiCatalogHandler,
-  createExpressApiCatalogHeadHandler,
-} from '@airnub/wellknown-api-catalog';
-import { catalogConfig } from './catalog-config';
+import { registerExpressApiCatalog } from '@airnub/wellknown-api-catalog';
 
 const app = express();
 
-app.get('/.well-known/api-catalog', createExpressApiCatalogHandler(catalogConfig));
-app.head('/.well-known/api-catalog', createExpressApiCatalogHeadHandler(catalogConfig));
+// That's it! GET and HEAD handlers auto-registered at /.well-known/api-catalog
+registerExpressApiCatalog(app, {
+  apis: [
+    {
+      id: 'my-api',
+      basePath: '/api/v1',
+      specs: [{ href: '/api/v1/openapi.json' }],
+    },
+  ],
+});
 ```
-
-The HEAD handler reuses your origin strategy so it emits the same `Content-Type`
-and `Link: rel="api-catalog"` headers as the GET handler—just without a body.
 
 ### Fastify
 
@@ -123,119 +94,53 @@ The plugin registers both GET and HEAD routes with identical headers so your
 catalog stays compliant whether clients fetch metadata or just probe the
 endpoint.
 
-### Using with Next.js App Router
+### Next.js App Router (Simplified)
 
-When you're building a route handler under `app/.well-known/api-catalog/route.ts`,
-derive the origin from `NextRequest.url` and feed it into the framework-agnostic
-`buildApiCatalogLinksetForOrigin` helper:
+Create `app/.well-known/api-catalog/route.ts`:
 
 ```ts
-// app/.well-known/api-catalog/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import type { ApiCatalogConfig } from '@airnub/wellknown-api-catalog';
-import {
-  buildApiCatalogLinksetForOrigin,
-  openApiSpec,
-} from '@airnub/wellknown-api-catalog';
+import { createNextApiCatalogRoutes } from '@airnub/wellknown-api-catalog';
 
-const catalogConfig: ApiCatalogConfig = {
-  publisher: 'example-publisher',
-  apis: [
-    {
-      id: 'example-service-one',
-      title: 'Example Service One API',
-      basePath: '/api/service-one',
-      specs: [openApiSpec('/api/service-one/openapi.json', '3.1')],
-    },
-  ],
-};
-
-const RFC9727_PROFILE = 'https://www.rfc-editor.org/info/rfc9727';
-
-export function GET(request: NextRequest) {
-  const origin = new URL(request.url).origin;
-  const linkset = buildApiCatalogLinksetForOrigin(catalogConfig, origin);
-
-  return NextResponse.json(linkset, {
-    headers: {
-      'Content-Type': `application/linkset+json; profile="${RFC9727_PROFILE}"`,
-    },
-  });
-}
-
-export function HEAD(request: NextRequest) {
-  const origin = new URL(request.url).origin;
-  const url = `${origin}/.well-known/api-catalog`;
-
-  return new NextResponse(null, {
-    headers: {
-      'Content-Type': `application/linkset+json; profile="${RFC9727_PROFILE}"`,
-      Link: `<${url}>; rel="api-catalog"`,
-    },
-  });
-}
+// All RFC complexity handled automatically!
+export const { GET, HEAD } = createNextApiCatalogRoutes(
+  {
+    apis: [
+      {
+        id: 'my-api',
+        basePath: '/api/v1',
+        specs: [{ href: '/api/v1/openapi.json' }],
+      },
+    ],
+  },
+  NextRequest,
+  NextResponse
+);
 ```
 
-`buildApiCatalogLinksetForOrigin` takes a plain `origin` string, so it works in
-both Edge and Node runtimes without relying on Node's `IncomingMessage`.
+### Supabase Edge Functions / Deno (Simplified)
 
-### Using with Supabase Edge Functions (Deno)
-
-Supabase Edge Functions run on Deno and expose the standard Fetch API. Import
-the package via the npm compatibility layer and reuse the same helper:
+Create `supabase/functions/api-catalog/index.ts`:
 
 ```ts
-// supabase/functions/api-catalog/index.ts
 import { serve } from 'https://deno.land/std/http/server.ts';
-import {
-  buildApiCatalogLinksetForOrigin,
-  openApiSpec,
-  type ApiCatalogConfig,
-} from 'npm:@airnub/wellknown-api-catalog';
+import { createApiCatalogHandler } from 'npm:@airnub/wellknown-api-catalog';
 
-const catalogConfig: ApiCatalogConfig = {
-  publisher: 'example-publisher',
-  apis: [
-    {
-      id: 'example-service-one',
-      title: 'Example Service One API',
-      basePath: '/api/service-one',
-      specs: [openApiSpec('/api/service-one/openapi.json', '3.1')],
-    },
-  ],
-};
-
-const RFC9727_PROFILE = 'https://www.rfc-editor.org/info/rfc9727';
-
-serve((request: Request): Response => {
-  const url = new URL(request.url);
-
-  if (url.pathname !== '/.well-known/api-catalog') {
-    return new Response('Not found', { status: 404 });
-  }
-
-  const origin = url.origin;
-  const linkset = buildApiCatalogLinksetForOrigin(catalogConfig, origin);
-
-  if (request.method === 'HEAD') {
-    return new Response(null, {
-      headers: {
-        'Content-Type': `application/linkset+json; profile="${RFC9727_PROFILE}"`,
-        Link: `<${origin}/.well-known/api-catalog>; rel="api-catalog"`,
+// All RFC complexity handled automatically!
+serve(
+  createApiCatalogHandler({
+    apis: [
+      {
+        id: 'my-api',
+        basePath: '/api/v1',
+        specs: [{ href: '/api/v1/openapi.json' }],
       },
-    });
-  }
-
-  return new Response(JSON.stringify(linkset), {
-    headers: {
-      'Content-Type': `application/linkset+json; profile="${RFC9727_PROFILE}"`,
-    },
-  });
-});
+    ],
+  })
+);
 ```
 
-By staying within the Fetch API surface area you avoid Node-specific globals and
-keep the same catalog logic across Express, Fastify, Next.js, and Supabase.
+Works with Supabase Edge Functions, Deno Deploy, Cloudflare Workers, and any Fetch API runtime.
 
 ## Linkset output
 
@@ -344,6 +249,94 @@ jsonSchemaSpec('/api/schema.json', '07');
 ```
 
 Supports multiple JSON Schema drafts with correct profile URIs.
+
+## Advanced Usage
+
+The simplified APIs above cover most use cases. If you need more control, use the lower-level functions:
+
+### Express (Advanced)
+
+```ts
+import express from 'express';
+import {
+  createExpressApiCatalogHandler,
+  createExpressApiCatalogHeadHandler,
+} from '@airnub/wellknown-api-catalog';
+
+const app = express();
+
+const config = {
+  publisher: 'my-company',
+  originStrategy: { kind: 'fromRequest', trustProxy: true },
+  apis: [
+    {
+      id: 'my-api',
+      title: 'My API',
+      basePath: '/api/v1',
+      specs: [
+        { href: '/api/v1/openapi.json', type: 'application/vnd.oai.openapi+json' },
+        { rel: 'service-doc', href: 'https://docs.example.com', type: 'text/html' },
+      ],
+    },
+  ],
+};
+
+app.get('/.well-known/api-catalog', createExpressApiCatalogHandler(config));
+app.head('/.well-known/api-catalog', createExpressApiCatalogHeadHandler(config));
+```
+
+### Framework-Agnostic
+
+For custom frameworks or edge runtimes, use the core builder functions:
+
+```ts
+import {
+  buildApiCatalogLinksetForOrigin,
+  createGetResponse,
+  createHeadResponse,
+} from '@airnub/wellknown-api-catalog';
+
+// In any HTTP handler
+function handleApiCatalog(request) {
+  const origin = new URL(request.url).origin;
+  const config = { apis: [...] };
+
+  if (request.method === 'GET') {
+    const linkset = buildApiCatalogLinksetForOrigin(config, origin);
+    const response = createGetResponse(linkset, origin);
+    return new Response(response.body, {
+      status: response.status,
+      headers: response.headers,
+    });
+  }
+
+  if (request.method === 'HEAD') {
+    const response = createHeadResponse(origin);
+    return new Response(null, {
+      status: response.status,
+      headers: response.headers,
+    });
+  }
+}
+```
+
+### Accessing RFC Constants
+
+If you need the RFC constants (for custom implementations or testing):
+
+```ts
+import {
+  RFC9727_PROFILE,
+  API_CATALOG_PATH,
+  LINKSET_CONTENT_TYPE,
+  API_CATALOG_LINK_REL,
+} from '@airnub/wellknown-api-catalog';
+
+console.log(RFC9727_PROFILE); // https://www.rfc-editor.org/info/rfc9727
+console.log(API_CATALOG_PATH); // /.well-known/api-catalog
+console.log(LINKSET_CONTENT_TYPE); // application/linkset+json; profile="..."
+console.log(API_CATALOG_LINK_REL); // api-catalog
+```
 
 ## Origin strategies
 

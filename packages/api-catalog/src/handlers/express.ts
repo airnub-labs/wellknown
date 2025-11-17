@@ -1,4 +1,4 @@
-import type { Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction, Router } from 'express';
 import type { ApiCatalogConfig } from '../types';
 import { buildApiCatalogLinkset } from '../builder';
 import { resolveOrigin, normalizeOriginStrategy } from '../origin';
@@ -34,4 +34,33 @@ export function createExpressApiCatalogHeadHandler(config?: ApiCatalogConfig) {
       .setHeader('Link', `<${catalogUrl}>; rel="${API_CATALOG_LINK_REL}"`)
       .end();
   };
+}
+
+/**
+ * Simplified API: Registers both GET and HEAD routes automatically at /.well-known/api-catalog
+ *
+ * @example
+ * ```typescript
+ * import express from 'express';
+ * import { registerExpressApiCatalog } from '@airnub/wellknown-api-catalog';
+ *
+ * const app = express();
+ *
+ * registerExpressApiCatalog(app, {
+ *   apis: [
+ *     {
+ *       id: 'my-api',
+ *       basePath: '/api/v1',
+ *       specs: [{ href: '/api/v1/openapi.json' }]
+ *     }
+ *   ]
+ * });
+ * ```
+ */
+export function registerExpressApiCatalog(
+  app: Router,
+  config: ApiCatalogConfig
+): void {
+  app.get(API_CATALOG_PATH, createExpressApiCatalogHandler(config));
+  app.head(API_CATALOG_PATH, createExpressApiCatalogHeadHandler(config));
 }

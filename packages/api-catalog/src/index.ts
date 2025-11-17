@@ -4,4 +4,7 @@ export * from './origin';
 export * from './builder';
 export * from './handlers/express';
 export * from './handlers/fastify';
+export * from './handlers/nextjs';
+export * from './handlers/supabase';
 export * from './helpers';
+export * from './response-utils';
