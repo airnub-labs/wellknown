@@ -282,6 +282,69 @@ sequenceDiagram
   Agent->>Agent: Parse spec, generate client, enforce auth/policies
 ```
 
+## Helper Functions
+
+The package provides helper functions for common API specification formats:
+
+### OpenAPI
+
+```typescript
+import { openApiSpec } from '@airnub/wellknown-api-catalog';
+
+// OpenAPI 3.1 (default)
+openApiSpec('/api/openapi.json');
+
+// OpenAPI 3.0
+openApiSpec('/api/openapi.json', '3.0');
+```
+
+Generates a spec reference with the correct MIME type (`application/vnd.oai.openapi+json`) and version-specific profile URI.
+
+### GraphQL
+
+```typescript
+import { graphqlSchemaSpec } from '@airnub/wellknown-api-catalog';
+
+// GraphQL SDL schema (default)
+graphqlSchemaSpec('/api/schema.graphql');
+
+// GraphQL introspection result
+graphqlSchemaSpec('/api/introspection', { format: 'introspection' });
+```
+
+Supports both SDL (Schema Definition Language) format and introspection query results.
+
+### AsyncAPI
+
+```typescript
+import { asyncApiSpec } from '@airnub/wellknown-api-catalog';
+
+// AsyncAPI 3.0 (default)
+asyncApiSpec('/api/asyncapi.json');
+
+// AsyncAPI 2.0
+asyncApiSpec('/api/asyncapi.json', '2.0');
+```
+
+For event-driven and asynchronous API specifications.
+
+### JSON Schema
+
+```typescript
+import { jsonSchemaSpec } from '@airnub/wellknown-api-catalog';
+
+// JSON Schema 2020-12 (default)
+jsonSchemaSpec('/api/schema.json');
+
+// JSON Schema 2019-09
+jsonSchemaSpec('/api/schema.json', '2019-09');
+
+// JSON Schema draft-07
+jsonSchemaSpec('/api/schema.json', '07');
+```
+
+Supports multiple JSON Schema drafts with correct profile URIs.
+
 ## Origin strategies
 
 Choose how anchors are materialised:
