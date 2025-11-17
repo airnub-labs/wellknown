@@ -79,20 +79,25 @@ registerExpressApiCatalog(app, {
 });
 ```
 
-### Fastify
+### Fastify (Simplified)
 
 ```ts
 import Fastify from 'fastify';
-import { fastifyApiCatalogPlugin } from '@airnub/wellknown-api-catalog';
-import { catalogConfig } from './catalog-config';
+import { registerFastifyApiCatalog } from '@airnub/wellknown-api-catalog';
 
 const fastify = Fastify();
-await fastify.register(fastifyApiCatalogPlugin, { config: catalogConfig });
-```
 
-The plugin registers both GET and HEAD routes with identical headers so your
-catalog stays compliant whether clients fetch metadata or just probe the
-endpoint.
+// That's it! GET and HEAD handlers auto-registered at /.well-known/api-catalog
+registerFastifyApiCatalog(fastify, {
+  apis: [
+    {
+      id: 'my-api',
+      basePath: '/api/v1',
+      specs: [{ href: '/api/v1/openapi.json' }],
+    },
+  ],
+});
+```
 
 ### Next.js App Router (Simplified)
 
@@ -284,6 +289,38 @@ const config = {
 app.get('/.well-known/api-catalog', createExpressApiCatalogHandler(config));
 app.head('/.well-known/api-catalog', createExpressApiCatalogHeadHandler(config));
 ```
+
+### Fastify (Advanced - Plugin Style)
+
+If you need the Fastify plugin pattern (e.g., for plugin composition or scoped configuration):
+
+```ts
+import Fastify from 'fastify';
+import { fastifyApiCatalogPlugin } from '@airnub/wellknown-api-catalog';
+
+const fastify = Fastify();
+
+const config = {
+  publisher: 'my-company',
+  originStrategy: { kind: 'fromRequest', trustProxy: true },
+  apis: [
+    {
+      id: 'my-api',
+      title: 'My API',
+      basePath: '/api/v1',
+      specs: [
+        { href: '/api/v1/openapi.json', type: 'application/vnd.oai.openapi+json' },
+        { rel: 'service-doc', href: 'https://docs.example.com', type: 'text/html' },
+      ],
+    },
+  ],
+};
+
+// Plugin style requires wrapping config in { config: ... }
+await fastify.register(fastifyApiCatalogPlugin, { config });
+```
+
+Note: For most use cases, `registerFastifyApiCatalog(fastify, config)` is simpler.
 
 ### Framework-Agnostic
 

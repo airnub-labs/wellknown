@@ -70,20 +70,18 @@ Or with Fastify:
 
 ```ts
 import Fastify from 'fastify';
-import { fastifyApiCatalogPlugin } from '@airnub/wellknown-api-catalog';
+import { registerFastifyApiCatalog } from '@airnub/wellknown-api-catalog';
 
 const fastify = Fastify();
 
-fastify.register(fastifyApiCatalogPlugin, {
-  config: {
-    apis: [
-      {
-        id: 'my-api',
-        basePath: '/api/v1',
-        specs: [{ href: '/api/v1/openapi.json' }],
-      },
-    ],
-  },
+registerFastifyApiCatalog(fastify, {
+  apis: [
+    {
+      id: 'my-api',
+      basePath: '/api/v1',
+      specs: [{ href: '/api/v1/openapi.json' }],
+    },
+  ],
 });
 ```
 
