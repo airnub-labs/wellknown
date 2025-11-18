@@ -1,13 +1,19 @@
 # wellknown
 
-`wellknown` is a toolkit for shipping standards-aligned `/.well-known/*` endpoints. The `@airnub/wellknown-api-catalog` package implements [RFC 9727](https://www.rfc-editor.org/rfc/rfc9727.html) for API catalog discovery via `/.well-known/api-catalog`, emitting Linkset JSON so humans, SDKs, and AI coding agents can discover live APIs.
+`wellknown` is a toolkit for shipping and consuming standards-aligned `/.well-known/*` endpoints.
+
+The toolkit provides both **server-side** and **client-side** tools:
+
+- **`@airnub/wellknown-api-catalog`** - Server-side package implementing [RFC 9727](https://www.rfc-editor.org/rfc/rfc9727.html) for API catalog discovery via `/.well-known/api-catalog`, emitting Linkset JSON so humans, SDKs, and AI coding agents can discover live APIs
+- **`@airnub/wellknown-cli`** (planned) - Client-side CLI tool enabling AI agents and developers to programmatically discover, fetch, and validate API catalogs from any RFC 9727-compliant host
 
 When every API describes itself through a Linkset catalog, agents no longer hunt for scattered OpenAPI URLs or proprietary plugin manifests—they can resolve one URL and follow machine-readable relationships to official specs.
 
 ## Documentation
 
 - **[Roadmap](roadmap.md)** - Future packages and well-known specs
-- **[Publishing Guide](publishing.md)** - How to release new versions to npm
+- **[Publishing Guide - API Catalog](publishing.md)** - How to release new versions to npm
+- **[Publishing Guide - CLI Tool](publishing-cli.md)** - How to release CLI tool to GitHub Packages
 
 ## Features
 
@@ -22,187 +28,143 @@ When every API describes itself through a Linkset catalog, agents no longer hunt
 Install the current pre-release:
 
 ```bash
-pnpm add @airnub/wellknown-api-catalog@next
-# or
 npm install @airnub/wellknown-api-catalog@next
 ```
 
-Configure your catalog and wire the handlers into Express and Fastify:
+All RFC complexity (well-known paths, Content-Types, profile URIs) is handled automatically. Here's a simple Next.js example:
+
+### Next.js App Router
+
+Create `app/.well-known/api-catalog/route.ts`:
 
 ```ts
-import type { ApiCatalogConfig } from '@airnub/wellknown-api-catalog';
-import {
-  createExpressApiCatalogHandler,
-  createExpressApiCatalogHeadHandler,
-  fastifyApiCatalogPlugin,
-  openApiSpec,
-} from '@airnub/wellknown-api-catalog';
-import express from 'express';
-import Fastify from 'fastify';
+import { NextRequest, NextResponse } from 'next/server';
+import { createNextApiCatalogRoutes } from '@airnub/wellknown-api-catalog';
 
-const config: ApiCatalogConfig = {
-  publisher: 'example-publisher',
-  originStrategy: { kind: 'fromRequest', trustProxy: false },
-  apis: [
-    {
-      id: 'example-service-one',
-      title: 'Example Service One API',
-      basePath: '/api/service-one',
-      specs: [openApiSpec('/api/service-one/openapi.json', '3.1')],
-    },
-  ],
-};
+export const { GET, HEAD } = createNextApiCatalogRoutes(
+  {
+    apis: [
+      {
+        id: 'my-api',
+        basePath: '/api/v1',
+        specs: [{ href: '/api/v1/openapi.json' }],
+      },
+    ],
+  },
+  NextRequest,
+  NextResponse
+);
+```
+
+That's it! The package automatically handles RFC-compliant responses with correct Content-Type, profile parameters, and Link headers.
+
+### Other Frameworks
+
+The package includes handlers for:
+- **Express** - `registerExpressApiCatalog(app, config)`
+- **Fastify** - `registerFastifyApiCatalog(fastify, config)`
+- **Supabase Edge Functions / Deno** - `createApiCatalogHandler(config)`
+- **Custom frameworks** - Low-level builders and utilities
+
+For detailed examples, see the sections below.
+
+---
+
+## Advanced Examples
+
+### Express
+
+```ts
+import express from 'express';
+import { registerExpressApiCatalog } from '@airnub/wellknown-api-catalog';
 
 const app = express();
-const fastify = Fastify();
 
-app.get('/.well-known/api-catalog', createExpressApiCatalogHandler(config));
-app.head('/.well-known/api-catalog', createExpressApiCatalogHeadHandler(config));
-
-fastify.register(fastifyApiCatalogPlugin, { config });
-```
-
-`createExpressApiCatalogHandler` and `createExpressApiCatalogHeadHandler` emit
-`application/linkset+json` plus the `rel="api-catalog"` Link header. The
-Fastify plugin registers both GET and HEAD routes with the same headers and
-payload semantics.
-
-### Using the origin-based helper
-
-For environments that expose a `Request` object instead of Node's
-`IncomingMessage`—such as the Next.js App Router or Supabase Edge Functions—use
-`buildApiCatalogLinksetForOrigin(config, origin)`. Derive the origin from the
-request URL, build the Linkset once, and return it via the platform's preferred
-response helper.
-
-#### Using with Next.js App Router
-
-```ts
-// app/.well-known/api-catalog/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import type { ApiCatalogConfig } from '@airnub/wellknown-api-catalog';
-import {
-  buildApiCatalogLinksetForOrigin,
-  openApiSpec,
-} from '@airnub/wellknown-api-catalog';
-
-const catalogConfig: ApiCatalogConfig = {
-  publisher: 'example-publisher',
+registerExpressApiCatalog(app, {
   apis: [
     {
-      id: 'example-service-one',
-      title: 'Example Service One API',
-      basePath: '/api/service-one',
-      specs: [
-        openApiSpec('/api/service-one/openapi.json', '3.1'),
-      ],
+      id: 'my-api',
+      basePath: '/api/v1',
+      specs: [{ href: '/api/v1/openapi.json' }],
     },
   ],
-};
-
-const RFC9727_PROFILE = 'https://www.rfc-editor.org/info/rfc9727';
-
-export function GET(request: NextRequest) {
-  const origin = new URL(request.url).origin;
-  const linkset = buildApiCatalogLinksetForOrigin(catalogConfig, origin);
-
-  return NextResponse.json(linkset, {
-    status: 200,
-    headers: {
-      'Content-Type': `application/linkset+json; profile="${RFC9727_PROFILE}"`,
-    },
-  });
-}
-
-export function HEAD(request: NextRequest) {
-  const origin = new URL(request.url).origin;
-  const url = `${origin}/.well-known/api-catalog`;
-
-  return new NextResponse(null, {
-    status: 200,
-    headers: {
-      'Content-Type': `application/linkset+json; profile="${RFC9727_PROFILE}"`,
-      Link: `<${url}>; rel="api-catalog"`,
-    },
-  });
-}
-```
-
-This pattern works in both the Node.js and Edge runtimes because it never touches
-`IncomingMessage`; the origin is reconstructed via `request.url`.
-
-#### Using with Supabase Edge Functions (Deno)
-
-```ts
-// supabase/functions/api-catalog/index.ts
-import { serve } from 'https://deno.land/std/http/server.ts';
-// Deno can import npm packages via the `npm:` specifier:
-import {
-  buildApiCatalogLinksetForOrigin,
-  openApiSpec,
-  type ApiCatalogConfig,
-} from 'npm:@airnub/wellknown-api-catalog';
-
-const catalogConfig: ApiCatalogConfig = {
-  publisher: 'example-publisher',
-  apis: [
-    {
-      id: 'example-service-one',
-      title: 'Example Service One API',
-      basePath: '/api/service-one',
-      specs: [
-        openApiSpec('/api/service-one/openapi.json', '3.1'),
-      ],
-    },
-  ],
-};
-
-const RFC9727_PROFILE = 'https://www.rfc-editor.org/info/rfc9727';
-
-serve((request: Request): Response => {
-  const url = new URL(request.url);
-
-  if (url.pathname !== '/.well-known/api-catalog') {
-    return new Response('Not found', { status: 404 });
-  }
-
-  const origin = url.origin;
-  const linkset = buildApiCatalogLinksetForOrigin(catalogConfig, origin);
-
-  if (request.method === 'HEAD') {
-    return new Response(null, {
-      status: 200,
-      headers: {
-        'Content-Type': `application/linkset+json; profile="${RFC9727_PROFILE}"`,
-        Link: `<${origin}/.well-known/api-catalog>; rel="api-catalog"`,
-      },
-    });
-  }
-
-  return new Response(JSON.stringify(linkset), {
-    status: 200,
-    headers: {
-      'Content-Type': `application/linkset+json; profile="${RFC9727_PROFILE}"`,
-    },
-  });
 });
 ```
 
-Supabase Edge Functions run on Deno and expose the standard Fetch API. Import
-the package via `npm:@airnub/wellknown-api-catalog` and rely on the origin-based
-helper to stay compatible with Deno's npm layer.
+### Fastify
+
+```ts
+import Fastify from 'fastify';
+import { registerFastifyApiCatalog } from '@airnub/wellknown-api-catalog';
+
+const fastify = Fastify();
+
+registerFastifyApiCatalog(fastify, {
+  apis: [
+    {
+      id: 'my-api',
+      basePath: '/api/v1',
+      specs: [{ href: '/api/v1/openapi.json' }],
+    },
+  ],
+});
+```
+
+### Supabase Edge Functions (Deno)
+
+```ts
+import { serve } from 'https://deno.land/std/http/server.ts';
+import { createApiCatalogHandler } from 'npm:@airnub/wellknown-api-catalog';
+
+serve(
+  createApiCatalogHandler({
+    apis: [
+      {
+        id: 'my-api',
+        basePath: '/api/v1',
+        specs: [{ href: '/api/v1/openapi.json' }],
+      },
+    ],
+  })
+);
+```
+
+---
 
 ## For AI agents
 
-LLM and coding agents can:
+### Publishing APIs (Server-side)
 
-1. `GET /.well-known/api-catalog` with `Accept: application/linkset+json`.
-2. Parse the `linkset` array; each entry is an API anchor that points to a base
-   URL on your host.
-3. Follow `service-desc` links to fetch OpenAPI, GraphQL, AsyncAPI, JSON Schema,
-   or other specs announced via standard web link relations.
-4. Use those specs to build clients, derive auth requirements, or drive tool
-   execution safely against live infrastructure.
+The `@airnub/wellknown-api-catalog` package enables services to publish RFC 9727-compliant API catalogs. Once integrated, any AI agent or developer can discover your APIs automatically.
 
-Because the Linkset payload is self-describing and versioned, agents always hit
-the canonical documentation without scraping portals or guessing at URLs.
+### Discovering APIs (Client-side)
+
+LLM and coding agents can discover APIs in two ways:
+
+**Manual approach:**
+1. `GET /.well-known/api-catalog` with `Accept: application/linkset+json`
+2. Parse the `linkset` array; each entry is an API anchor that points to a base URL on your host
+3. Follow `service-desc` links to fetch OpenAPI, GraphQL, AsyncAPI, JSON Schema, or other specs
+4. Use those specs to build clients, derive auth requirements, or drive tool execution safely
+
+**Automated approach (coming soon):**
+
+The `@airnub/wellknown-cli` tool (planned) will automate this workflow:
+
+```bash
+# Discover all APIs on a host
+wellknown discover api.example.com --format json
+
+# Fetch API specifications
+wellknown fetch api.example.com --all --output ./specs/
+
+# Validate RFC compliance
+wellknown validate api.example.com
+```
+
+The CLI will provide JSON output optimized for programmatic consumption by AI agents, including:
+- API metadata and extensions (x-auth, x-description, x-stability)
+- Automatic spec fetching and validation
+- CI/CD integration for compliance checking
+
+Because the Linkset payload is self-describing and versioned, agents always hit the canonical documentation without scraping portals or guessing at URLs.

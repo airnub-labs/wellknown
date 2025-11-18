@@ -12,6 +12,81 @@ The `@airnub/wellknown-api-catalog` package is feature-complete and implements t
 
 At this time, **no additional features are planned** for the `api-catalog` package. The implementation is spec-compliant and production-ready.
 
+### Next Planned Development
+
+**`@airnub/wellknown-cli` - CLI Tool for Well-Known Resource Discovery**
+
+A command-line interface tool for discovering and consuming RFC 9727-compliant API catalogs and other well-known resources. This tool serves as the **client-side companion** to the wellknown toolkit packages.
+
+**Status:** 📋 Planned
+
+#### Overview
+
+The CLI tool will enable developers and AI coding agents to easily discover, validate, and consume resources from any host that publishes well-known endpoints. Initially focused on API catalog discovery (`/.well-known/api-catalog`), the tool is designed to support additional well-known specifications in the future.
+
+#### Core Features
+
+- **Discovery:** Discover APIs and resources from `/.well-known/*` endpoints
+- **Validation:** Validate RFC compliance for published well-known resources
+- **Spec Fetching:** Fetch and save API specifications (OpenAPI, GraphQL, AsyncAPI, JSON Schema)
+- **AI Agent Support:** JSON output for programmatic consumption by AI coding agents
+- **CI/CD Integration:** Automated compliance validation for deployment pipelines
+
+#### How It Supports the Wellknown Ecosystem
+
+The CLI tool is designed with an extensible architecture that can support **all well-known specifications** as new packages are added to the toolkit:
+
+1. **Security & Authentication Discovery**
+   - Discover OAuth 2.0 and OpenID Connect configurations
+   - Fetch security.txt contact information
+   - Validate security metadata compliance
+
+2. **Web & DNS Resource Discovery**
+   - Discover host metadata and service capabilities
+   - Fetch change-password URLs for password managers
+   - Validate ACME challenge configurations
+
+3. **Payment & Commerce Discovery**
+   - Discover payment method manifests
+   - Validate payment capability metadata
+
+4. **Privacy & Policy Discovery**
+   - Fetch DNT policy documents
+   - Validate privacy policy disclosures
+
+#### Future Commands
+
+As new well-known packages are added to the toolkit, the CLI can be extended with specialized commands:
+
+```bash
+# API Catalog (Phase 1)
+wellknown discover api.example.com
+wellknown fetch api.example.com --all
+
+# Security (Future)
+wellknown security api.example.com
+wellknown oauth api.example.com --metadata
+
+# General Discovery (Future)
+wellknown list api.example.com  # List all well-known resources
+wellknown validate api.example.com --all  # Validate all well-known endpoints
+```
+
+#### Implementation Timeline
+
+- **Phase 1 (MVP):** API catalog discovery, fetching, and validation - 2-3 weeks
+- **Phase 2:** Enhanced validation and AI agent support - 1-2 weeks
+- **Phase 3:** Multi-spec support for additional well-known packages - As packages are developed
+
+#### Value to the Ecosystem
+
+- **Completes the wellknown toolkit** by providing consumer-side tooling
+- **Enables AI agents** to programmatically discover and consume well-known resources
+- **Improves developer experience** with automated discovery and validation
+- **Future-proof architecture** that scales with new well-known spec implementations
+
+---
+
 ### Potential New Packages
 
 The `wellknown` toolkit could be extended with additional packages that implement other `/.well-known/` specifications. These are potential future additions:
