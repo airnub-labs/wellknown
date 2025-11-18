@@ -4,6 +4,7 @@
 [![npm version](https://img.shields.io/npm/v/@airnub/wellknown-api-catalog.svg)](https://www.npmjs.com/package/@airnub/wellknown-api-catalog)
 [![npm downloads](https://img.shields.io/npm/dm/@airnub/wellknown-api-catalog.svg)](https://www.npmjs.com/package/@airnub/wellknown-api-catalog)
 [![CI](https://github.com/airnub-labs/wellknown/actions/workflows/ci.yml/badge.svg)](https://github.com/airnub-labs/wellknown/actions/workflows/ci.yml)
+[![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://airnub-labs.github.io/wellknown/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.5-blue.svg)](https://www.typescriptlang.org/)
 
 A toolkit from **Airnub Technologies Limited** for building production-ready `/.well-known/*`
