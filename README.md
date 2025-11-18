@@ -30,8 +30,17 @@ host publishes a Linkset JSON catalog at that location, any agent can:
 4. Use those specs to generate clients, validate prompts, or drive toolchains
    against the real infrastructure
 
-wellknown packages automate that publication step so agents—and your own SDKs—can
-always discover the canonical source of truth straight from production.
+The wellknown toolkit provides both **server-side** and **client-side** tools:
+
+- **`@airnub/wellknown-api-catalog`** – Server-side package that automates the
+  publication step so agents can discover the canonical source of truth straight
+  from production
+- **`@airnub/wellknown-cli`** (planned) – Client-side CLI tool that enables AI
+  agents and developers to programmatically discover, fetch, and validate API
+  catalogs from any RFC 9727-compliant host
+
+This complete ecosystem makes it trivial for AI agents to both publish and
+consume well-known resources without manual configuration.
 
 ## Standards
 
@@ -50,6 +59,11 @@ always discover the canonical source of truth straight from production.
 - [`@airnub/wellknown-api-catalog`](./packages/api-catalog) – publish Linkset
   JSON catalogs plus drop-in handlers for Express and Fastify so your
   `/.well-known/api-catalog` endpoint is spec-aligned and proxy-safe by default
+
+## Roadmap
+
+For information about planned features and future packages, see the
+[roadmap](./docs/roadmap.md).
 
 ## Quickstart: API catalog
 
@@ -170,21 +184,3 @@ Releases are done via a manually triggered GitHub Actions workflow:
 
 For detailed steps and credential setup, see
 [`docs/publishing-npm.md`](./docs/publishing-npm.md).
-
----
-
-## License
-
-Copyright © 2024-2025 Airnub Technologies Limited
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.

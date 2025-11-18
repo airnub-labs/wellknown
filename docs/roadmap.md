@@ -18,7 +18,7 @@ At this time, **no additional features are planned** for the `api-catalog` packa
 
 A command-line interface tool for discovering and consuming RFC 9727-compliant API catalogs and other well-known resources. This tool serves as the **client-side companion** to the wellknown toolkit packages.
 
-**Status:** 📋 Planned (See [CLI Tool Design Document](./internal/cli-tool-design.md))
+**Status:** 📋 Planned
 
 #### Overview
 
