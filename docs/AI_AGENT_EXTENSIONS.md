@@ -71,12 +71,8 @@ interface AIAgentMetadataExtensions {
   // API stability and lifecycle (should agents use this?)
   'x-stability': 'experimental' | 'beta' | 'stable' | 'deprecated';
 
-  // Rate limiting (prevent quota exhaustion)
-  'x-rate-limit'?: {
-    requestsPerMinute?: number;
-    requestsPerHour?: number;
-    requestsPerDay?: number;
-  };
+  // Environment type (prevents accidental production calls)
+  'x-environment'?: 'production' | 'staging' | 'development' | 'sandbox' | 'test';
 }
 ```
 
@@ -140,12 +136,9 @@ const extendedLinkset: ApiCatalogLinkset = {
         headerName: 'Authorization',
         docsUrl: 'https://docs.example.com/auth'
       },
-      'x-description': 'Real-time ML inference API for image classification, NLP sentiment analysis, and time-series forecasting. Requires authentication and has rate limits.',
+      'x-description': 'Real-time ML inference API for image classification, NLP sentiment analysis, and time-series forecasting.',
       'x-stability': 'stable',
-      'x-rate-limit': {
-        requestsPerMinute: 60,
-        requestsPerHour: 1000
-      }
+      'x-environment': 'production'
     }
   ]
 };
@@ -177,12 +170,8 @@ interface AIMetadataOptions {
   // API stability
   stability: 'experimental' | 'beta' | 'stable' | 'deprecated';
 
-  // Rate limits (prevents quota exhaustion)
-  rateLimit?: {
-    requestsPerMinute?: number;
-    requestsPerHour?: number;
-    requestsPerDay?: number;
-  };
+  // Environment type (prevents accidental production calls)
+  environment?: 'production' | 'staging' | 'development' | 'sandbox' | 'test';
 }
 
 export function extendCatalogWithAIMetadata(
@@ -201,8 +190,8 @@ export function extendCatalogWithAIMetadata(
     extendedMetadata['x-auth'] = aiOptions.auth;
   }
 
-  if (aiOptions.rateLimit) {
-    extendedMetadata['x-rate-limit'] = aiOptions.rateLimit;
+  if (aiOptions.environment) {
+    extendedMetadata['x-environment'] = aiOptions.environment;
   }
 
   return {
@@ -244,10 +233,7 @@ export function GET(request: NextRequest) {
     },
     description: 'Secure payment processing API for credit cards, ACH, and digital wallets. Supports refunds, recurring billing, and fraud detection.',
     stability: 'stable',
-    rateLimit: {
-      requestsPerMinute: 100,
-      requestsPerHour: 5000
-    }
+    environment: 'production'
   });
 
   return NextResponse.json(extendedLinkset, {
@@ -319,11 +305,16 @@ const metadata = catalog['linkset-metadata']?.[0];
 const auth = metadata?.['x-auth'];
 const description = metadata?.['x-description'];
 const stability = metadata?.['x-stability'];
-const rateLimit = metadata?.['x-rate-limit'];
+const environment = metadata?.['x-environment'];
 
 // 3. Agent makes quick decisions based on metadata alone
 if (stability === 'deprecated') {
   console.warn('API is deprecated, skipping');
+  return;
+}
+
+if (environment === 'production' && agentMode === 'testing') {
+  console.log('Production API detected, switching to sandbox/dev environment');
   return;
 }
 
@@ -332,13 +323,9 @@ if (auth?.method === 'oauth2' && !hasOAuthSetup()) {
   return;
 }
 
-if (rateLimit && rateLimit.requestsPerMinute < requiredThroughput) {
-  console.log('Rate limit too low for this use case');
-  return;
-}
-
 // 4. Agent understands API purpose from description (saves reading spec)
 console.log('API does:', description);
+console.log('Environment:', environment);
 // Agent can now decide if this API matches the task
 
 // 5. Only NOW fetch the full OpenAPI spec (if needed)
@@ -351,7 +338,7 @@ if (openApiLink?.href) {
 }
 ```
 
-**Token Savings:** Agent can filter out incompatible APIs based on auth, stability, and description **before** downloading and parsing potentially large OpenAPI specs.
+**Token Savings:** Agent can filter out incompatible APIs based on auth, stability, environment, and description **before** downloading and parsing potentially large OpenAPI specs.
 
 ---
 
@@ -360,10 +347,10 @@ if (openApiLink?.href) {
 ### 1. Focus on Pre-Spec Decisions
 Only include metadata that helps agents **decide whether to fetch the full spec**:
 - ✅ Auth requirements (agent needs credentials first)
-- ✅ Rate limits (agent needs to know quotas)
+- ✅ Environment (agent shouldn't call production during testing)
 - ✅ Stability (agent shouldn't use deprecated APIs)
 - ✅ Description (agent needs to understand purpose)
-- ❌ Don't duplicate detailed info from OpenAPI spec
+- ❌ Don't duplicate detailed info from OpenAPI spec (rate limits, schemas, etc.)
 
 ### 2. Write Clear, Concise Descriptions
 The `x-description` should help LLMs understand the API's **purpose and capabilities** in 1-2 sentences:
@@ -378,15 +365,16 @@ Always include `x-auth` if authentication is required. Agents need to know:
 - What header name to use (e.g., `Authorization`, `X-API-Key`)
 - Where to get credentials (`docsUrl`)
 
-### 4. Set Realistic Rate Limits
-Help agents avoid hitting quotas by being transparent about limits:
+### 4. Specify Environment Clearly
+Help agents avoid accidental production calls:
 ```typescript
-'x-rate-limit': {
-  requestsPerMinute: 60,   // Most common limit
-  requestsPerHour: 1000,   // Secondary limit
-  requestsPerDay: 10000    // Hard daily cap
-}
+'x-environment': 'production'  // or 'staging', 'development', 'sandbox', 'test'
 ```
+- **production** → Real data, real customers, requires extra caution
+- **staging** → Pre-production testing environment
+- **development** → Dev/QA environment
+- **sandbox** → Safe testing environment with mock data
+- **test** → Automated testing environment
 
 ### 5. Keep Stability Current
 Update `x-stability` as your API evolves:
@@ -451,11 +439,7 @@ Here's what an AI-enriched catalog looks like:
       },
       "x-description": "Payment processing API for credit cards, ACH, and digital wallets. Supports refunds, recurring billing, and fraud detection.",
       "x-stability": "stable",
-      "x-rate-limit": {
-        "requestsPerMinute": 100,
-        "requestsPerHour": 5000,
-        "requestsPerDay": 50000
-      }
+      "x-environment": "production"
     }
   ]
 }
@@ -465,7 +449,7 @@ Here's what an AI-enriched catalog looks like:
 - ✅ How to authenticate (Bearer token in Authorization header)
 - ✅ What the API does (payment processing with specific features)
 - ✅ API stability (production-ready)
-- ✅ Rate limits (avoid quota exhaustion)
+- ✅ Environment type (production - requires caution)
 
 **All before downloading the potentially large OpenAPI spec!**
 
@@ -479,7 +463,7 @@ Here's what an AI-enriched catalog looks like:
    - **`x-auth`** - Authentication method, location, and header name
    - **`x-description`** - Human-readable API purpose (1-2 sentences)
    - **`x-stability`** - API lifecycle status
-   - **`x-rate-limit`** - Request quotas to prevent exhaustion
+   - **`x-environment`** - Environment type (prevents accidental production calls)
 
 ✅ **Token-efficient** - Agents can filter APIs before downloading large OpenAPI specs
 ✅ **No code changes needed** - Start adding metadata today using the helper patterns above

@@ -151,7 +151,7 @@ AI agents should be able to **filter APIs without reading full OpenAPI specs**. 
 1. **`x-auth`** - Authentication requirements (method, location, header name)
 2. **`x-description`** - Human-readable API purpose (1-2 sentences)
 3. **`x-stability`** - Lifecycle status (experimental, beta, stable, deprecated)
-4. **`x-rate-limit`** - Request quotas (per minute/hour/day)
+4. **`x-environment`** - Environment type (production, staging, development, sandbox, test)
 
 **Example Extension:**
 
@@ -167,17 +167,14 @@ const extendedMetadata: LinksetMetadata = {
   },
   'x-description': 'Payment processing API for credit cards and ACH. Supports refunds, recurring billing, and fraud detection.',
   'x-stability': 'stable',
-  'x-rate-limit': {
-    requestsPerMinute: 100,
-    requestsPerHour: 5000
-  }
+  'x-environment': 'production'
 };
 ```
 
 **Benefits:**
 - ✅ Agent knows auth method before fetching spec
 - ✅ Agent understands purpose without reading spec
-- ✅ Agent can check quotas before using API
+- ✅ Agent knows environment to prevent accidental production calls
 - ✅ Agent avoids deprecated APIs
 - ✅ Saves tokens by avoiding unnecessary spec downloads
 
@@ -187,7 +184,7 @@ Use the `x-` prefix for all custom extensions to indicate vendor-specific metada
 - ✅ `x-auth` - Authentication metadata
 - ✅ `x-description` - Human-readable description
 - ✅ `x-stability` - Lifecycle status
-- ✅ `x-rate-limit` - Rate limiting info
+- ✅ `x-environment` - Environment type
 
 This follows standard HTTP header convention and makes it clear these are extensions.
 
@@ -207,7 +204,7 @@ const extendedLinkset = {
     'x-auth': { method: 'bearer', location: 'header', headerName: 'Authorization' },
     'x-description': 'Payment processing API...',
     'x-stability': 'stable',
-    'x-rate-limit': { requestsPerMinute: 100 }
+    'x-environment': 'production'
   }]
 };
 ```
