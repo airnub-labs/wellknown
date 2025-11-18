@@ -86,6 +86,7 @@ jobs:
 
           mkdir -p .docusaurus-tmp/docs
           cp -R docs/. .docusaurus-tmp/docs/
+          rm -rf .docusaurus-tmp/docs/internal
 
       - name: Install Docusaurus deps
         working-directory: .docusaurus-tmp
