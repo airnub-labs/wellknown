@@ -1,6 +1,6 @@
 {
   "name": "@airnub/wellknown-api-catalog",
-  "version": "0.1.0-alpha.1",
+  "version": "0.1.0-alpha.2",
   "description": "RFC 9727 /.well-known/api-catalog handler with Linkset JSON output",
   "license": "Apache-2.0",
   "main": "dist/index.cjs",
