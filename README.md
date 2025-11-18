@@ -44,15 +44,23 @@ consume well-known resources without manual configuration.
 
 ## Standards
 
+The wellknown toolkit implements various RFC and W3C specifications for different well-known resources.
+
+### API Catalog (`@airnub/wellknown-api-catalog`)
+
 - **RFC 9727** – defines `/.well-known/api-catalog`, the `api-catalog` link
   relation, and the requirement to advertise catalogs with the
   `https://www.rfc-editor.org/info/rfc9727` profile
 - **RFC 9264** – describes Linkset JSON (`application/linkset+json`), the payload
-  format emitted by this repo
+  format emitted by this package
 - **RFC 8631** – lists the service link relations (`service-desc`, `service-doc`,
   `service-meta`, `status`) that connect anchors to specs, docs, and metadata
 - **RFC 7239** – details the `Forwarded` header used to safely reconstruct the
   externally-visible origin even when you sit behind proxies or CDNs
+
+### Future Well-Known Specifications
+
+As new packages are added to the toolkit, their relevant standards will be documented here. See the [roadmap](./docs/roadmap.md) for planned specifications including security.txt (RFC 9116), OAuth metadata (RFC 8414), and others.
 
 ## Packages
 
@@ -67,51 +75,9 @@ For information about planned features and future packages, see the
 
 ## Quickstart: API catalog
 
-All RFC complexity (well-known paths, Content-Types, profile URIs) is handled automatically:
+All RFC complexity (well-known paths, Content-Types, profile URIs) is handled automatically. Here's a simple Next.js example:
 
-```ts
-import express from 'express';
-import { registerExpressApiCatalog } from '@airnub/wellknown-api-catalog';
-
-const app = express();
-
-// That's it! GET and HEAD handlers auto-registered at /.well-known/api-catalog
-registerExpressApiCatalog(app, {
-  apis: [
-    {
-      id: 'my-api',
-      basePath: '/api/v1',
-      specs: [{ href: '/api/v1/openapi.json' }],
-    },
-  ],
-});
-```
-
-Or with Fastify:
-
-```ts
-import Fastify from 'fastify';
-import { registerFastifyApiCatalog } from '@airnub/wellknown-api-catalog';
-
-const fastify = Fastify();
-
-registerFastifyApiCatalog(fastify, {
-  apis: [
-    {
-      id: 'my-api',
-      basePath: '/api/v1',
-      specs: [{ href: '/api/v1/openapi.json' }],
-    },
-  ],
-});
-```
-
-The handlers automatically emit RFC-compliant responses with correct Content-Type,
-profile parameters, and Link headers.
-
-### Serverless and edge runtimes
-
-For Next.js App Router (`app/.well-known/api-catalog/route.ts`):
+**Next.js App Router** (`app/.well-known/api-catalog/route.ts`):
 
 ```ts
 import { NextRequest, NextResponse } from 'next/server';
@@ -119,28 +85,30 @@ import { createNextApiCatalogRoutes } from '@airnub/wellknown-api-catalog';
 
 export const { GET, HEAD } = createNextApiCatalogRoutes(
   {
-    apis: [{ id: 'my-api', basePath: '/api/v1', specs: [{ href: '/api/v1/openapi.json' }] }],
+    apis: [
+      {
+        id: 'my-api',
+        basePath: '/api/v1',
+        specs: [{ href: '/api/v1/openapi.json' }],
+      },
+    ],
   },
   NextRequest,
   NextResponse
 );
 ```
 
-For Supabase Edge Functions / Deno:
+That's it! The package automatically handles RFC-compliant responses with correct Content-Type, profile parameters, and Link headers.
 
-```ts
-import { serve } from 'https://deno.land/std/http/server.ts';
-import { createApiCatalogHandler } from 'npm:@airnub/wellknown-api-catalog';
+### Other Frameworks
 
-serve(
-  createApiCatalogHandler({
-    apis: [{ id: 'my-api', basePath: '/api/v1', specs: [{ href: '/api/v1/openapi.json' }] }],
-  })
-);
-```
+The package includes handlers for:
+- **Express** – `registerExpressApiCatalog(app, config)`
+- **Fastify** – `registerFastifyApiCatalog(fastify, config)`
+- **Supabase Edge Functions / Deno** – `createApiCatalogHandler(config)`
+- **Custom frameworks** – Low-level builders and utilities
 
-Full examples and advanced usage patterns live in
-[`packages/api-catalog/README.md`](./packages/api-catalog/README.md).
+For complete examples, advanced configuration, and framework-specific guides, see [`packages/api-catalog/README.md`](./packages/api-catalog/README.md).
 
 ## Development
 
@@ -163,24 +131,20 @@ The docs are generated from the `docs/` directory and built at CI time using a
 temporary Docusaurus project (no Docusaurus config or dependencies are checked
 into this repo).
 
-## Publishing to npm
+## Installation
 
-The `@airnub/wellknown-api-catalog` package is published to the public npm
-registry. The package is currently in pre-release (`0.1.0-next.x`). Install via
-the `next` tag until the first stable release:
+**API Catalog Package:**
+
+The `@airnub/wellknown-api-catalog` package is published to the public npm registry:
 
 ```bash
-pnpm add @airnub/wellknown-api-catalog@next
-# or
 npm install @airnub/wellknown-api-catalog@next
 ```
 
-Releases are done via a manually triggered GitHub Actions workflow:
+**CLI Tool** (planned):
 
-1. Bump the version in `packages/api-catalog/package.json` using SemVer.
-2. Commit and push the change to `main`.
-3. Go to **Actions → Publish @airnub/wellknown-api-catalog** and click **Run workflow**.
-4. The workflow will build, test, and publish to npm using the `NPM_TOKEN` secret.
+The `@airnub/wellknown-cli` tool will be published to GitHub Packages when available.
 
-For detailed steps and credential setup, see
-[`docs/publishing-npm.md`](./docs/publishing-npm.md).
+---
+
+**For maintainers:** Release and publishing guides are available in [`docs/publishing.md`](./docs/publishing.md) and [`docs/publishing-cli.md`](./docs/publishing-cli.md).
