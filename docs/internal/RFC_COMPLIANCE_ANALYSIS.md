@@ -20,17 +20,17 @@ The `@airnub/wellknown-api-catalog` implementation is **fully compliant** with R
 
 | Requirement | Status | Implementation Location | Notes |
 |------------|--------|------------------------|-------|
-| **Resolve HTTPS GET to `/.well-known/api-catalog`** | ✅ | `handlers/express.ts:7-23`<br>`handlers/fastify.ts:27-41` | Both frameworks implement GET handlers |
-| **Resolve HTTPS HEAD to `/.well-known/api-catalog`** | ✅ | `handlers/express.ts:26-37`<br>`handlers/fastify.ts:43-51` | Both frameworks implement HEAD handlers with Link header |
-| **Publish in `application/linkset+json` format** | ✅ | `constants.ts:3`<br>`handlers/express.ts:20`<br>`handlers/fastify.ts:38` | Content-Type header correctly set |
-| **Include RFC 9727 profile parameter** | ✅ | `constants.ts:1-3`<br>`builder.ts:50` | Profile URI: `https://www.rfc-editor.org/info/rfc9727` |
+| **Resolve HTTPS GET to `/.well-known/api-catalog`** | ✅ | `handlers/express.ts:7-23`<br />`handlers/fastify.ts:27-41` | Both frameworks implement GET handlers |
+| **Resolve HTTPS HEAD to `/.well-known/api-catalog`** | ✅ | `handlers/express.ts:26-37`<br />`handlers/fastify.ts:43-51` | Both frameworks implement HEAD handlers with Link header |
+| **Publish in `application/linkset+json` format** | ✅ | `constants.ts:3`<br />`handlers/express.ts:20`<br />`handlers/fastify.ts:38` | Content-Type header correctly set |
+| **Include RFC 9727 profile parameter** | ✅ | `constants.ts:1-3`<br />`builder.ts:50` | Profile URI: `https://www.rfc-editor.org/info/rfc9727` |
 | **Include hyperlinks to API endpoints** | ✅ | `builder.ts:26-46` | Each API generates anchor + link relations |
 
 ### Recommended Elements (SHOULD)
 
 | Requirement | Status | Implementation Location | Notes |
 |------------|--------|------------------------|-------|
-| **Include useful metadata** | ✅ | `types.ts:11-13`<br>`linkset.ts:14-18` | Supports `title`, `description`, `publisher`, custom metadata |
+| **Include useful metadata** | ✅ | `types.ts:11-13`<br />`linkset.ts:14-18` | Supports `title`, `description`, `publisher`, custom metadata |
 | **Provide OpenAPI/spec definitions** | ✅ | `helpers.ts:1-20` | Helper functions for OpenAPI, GraphQL |
 | **Support TLS/HTTPS** | ✅ | N/A (application-level) | Framework handlers work over HTTPS when deployed |
 | **Apply rate-limiting** | ⚠️ | Not implemented | **Recommendation:** Document that users should add rate-limiting middleware |
@@ -40,8 +40,8 @@ The `@airnub/wellknown-api-catalog` implementation is **fully compliant** with R
 | Requirement | Status | Implementation Location | Notes |
 |------------|--------|------------------------|-------|
 | **Support content negotiation** | ⚠️ | Not implemented | Only returns `application/linkset+json` |
-| **Nest catalogs with `api-catalog` relation** | ✅ | `linkset.ts:10`<br>`builder.ts:39-44` | Supports any relation type including `api-catalog` |
-| **Use RFC 8631 link relations** | ✅ | `types.ts:12`<br>`linkset.ts:5-8` | `service-desc`, `service-doc`, `service-meta`, `status` supported |
+| **Nest catalogs with `api-catalog` relation** | ✅ | `linkset.ts:10`<br />`builder.ts:39-44` | Supports any relation type including `api-catalog` |
+| **Use RFC 8631 link relations** | ✅ | `types.ts:12`<br />`linkset.ts:5-8` | `service-desc`, `service-doc`, `service-meta`, `status` supported |
 
 ---
 
@@ -51,8 +51,8 @@ The `@airnub/wellknown-api-catalog` implementation is **fully compliant** with R
 
 | Requirement | Status | Implementation Location | Notes |
 |------------|--------|------------------------|-------|
-| **`linkset` as sole top-level member** | ✅ | `linkset.ts:20-23`<br>`builder.ts:70` | Correctly structured |
-| **Link context objects wrapped in array** | ✅ | `linkset.ts:3-12`<br>`builder.ts:66-68` | `linkset: LinksetContext[]` |
+| **`linkset` as sole top-level member** | ✅ | `linkset.ts:20-23`<br />`builder.ts:70` | Correctly structured |
+| **Link context objects wrapped in array** | ✅ | `linkset.ts:3-12`<br />`builder.ts:66-68` | `linkset: LinksetContext[]` |
 | **`href` member required in link targets** | ✅ | `types.ts:1-7` | `LinkObject` interface enforces `href: string` |
 | **Link target objects wrapped in arrays** | ✅ | `builder.ts:41-43` | Each relation bucket is `LinkObject[]` |
 
@@ -60,7 +60,7 @@ The `@airnub/wellknown-api-catalog` implementation is **fully compliant** with R
 
 | Feature | Status | Implementation Location | Notes |
 |---------|--------|------------------------|-------|
-| **`linkset-metadata` array** | ✅ | `linkset.ts:22`<br>`builder.ts:49-55` | Optional but implemented |
+| **`linkset-metadata` array** | ✅ | `linkset.ts:22`<br />`builder.ts:49-55` | Optional but implemented |
 | **Extension target attributes** | ✅ | `types.ts:3-6` | `hreflang`, `title`, `type`, `profile` supported |
 | **Custom metadata properties** | ✅ | `linkset.ts:17` | `[key: string]: unknown` index signature |
 | **Custom link relations** | ✅ | `linkset.ts:11` | `[rel: string]: LinkObject[] \| string \| undefined` |
