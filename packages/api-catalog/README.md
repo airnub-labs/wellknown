@@ -1,5 +1,11 @@
 # @airnub/wellknown-api-catalog
 
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://github.com/airnub-labs/wellknown/blob/main/LICENSE)
+[![npm version](https://img.shields.io/npm/v/@airnub/wellknown-api-catalog.svg)](https://www.npmjs.com/package/@airnub/wellknown-api-catalog)
+[![npm downloads](https://img.shields.io/npm/dm/@airnub/wellknown-api-catalog.svg)](https://www.npmjs.com/package/@airnub/wellknown-api-catalog)
+[![CI](https://github.com/airnub-labs/wellknown/actions/workflows/ci.yml/badge.svg)](https://github.com/airnub-labs/wellknown/actions/workflows/ci.yml)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.5-blue.svg)](https://www.typescriptlang.org/)
+
 Publish an RFC 9727 `/.well-known/api-catalog` endpoint backed by Linkset JSON
 (RFC 9264) so humans, SDKs, and AI coding agents can discover the live API
 surface area of your host.
@@ -320,3 +326,21 @@ strategy so anchors always reflect your local listener configuration.
 This package follows semantic versioning. Breaking changes to the config types
 or Linkset emission format will trigger a major version bump. Pin to the latest
 minor within a major stream for stability.
+
+---
+
+## License
+
+Copyright © 2024-2025 Airnub Technologies Limited
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
