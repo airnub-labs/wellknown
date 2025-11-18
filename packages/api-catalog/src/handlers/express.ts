@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import type { Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction, Router } from 'express';
 import type { ApiCatalogConfig } from '../types';
 import { buildApiCatalogLinkset } from '../builder';
 import { resolveOrigin, normalizeOriginStrategy } from '../origin';
