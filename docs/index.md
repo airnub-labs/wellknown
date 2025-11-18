@@ -1,14 +1,21 @@
-# wellknown docs
+# wellknown
 
-`wellknown` is a toolkit for shipping standards-aligned `/.well-known/*`
-endpoints. The `@airnub/wellknown-api-catalog` package focuses on
-`/.well-known/api-catalog`, emitting Linkset JSON (RFC 9727 / RFC 9264) so
-humans, SDKs, and AI coding agents can discover live APIs straight from your
-host.
+`wellknown` is a toolkit for shipping standards-aligned `/.well-known/*` endpoints. The `@airnub/wellknown-api-catalog` package implements [RFC 9727](https://www.rfc-editor.org/rfc/rfc9727.html) for API catalog discovery via `/.well-known/api-catalog`, emitting Linkset JSON so humans, SDKs, and AI coding agents can discover live APIs.
 
-When every API describes itself through a Linkset catalog, agents no longer hunt
-for scattered OpenAPI URLs or proprietary plugin manifests—they can resolve one
-URL and follow machine-readable relationships to official specs.
+When every API describes itself through a Linkset catalog, agents no longer hunt for scattered OpenAPI URLs or proprietary plugin manifests—they can resolve one URL and follow machine-readable relationships to official specs.
+
+## Documentation
+
+- **[Roadmap](roadmap.md)** - Future packages and well-known specs
+- **[Publishing Guide](publishing.md)** - How to release new versions to npm
+
+## Features
+
+- **RFC 9727 Compliant** - Fully implements the API catalog specification
+- **Framework Support** - Express, Fastify, Next.js, Supabase Edge Functions, and more
+- **TypeScript First** - Complete type safety and inference
+- **Zero Dependencies** - Minimal runtime footprint (only proxy parsing libs)
+- **Proxy Aware** - Handles X-Forwarded headers and RFC 7239 correctly
 
 ## Quickstart
 
