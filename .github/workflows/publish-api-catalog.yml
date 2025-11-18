@@ -29,6 +29,7 @@ jobs:
         with:
           node-version: 20.x
           registry-url: https://registry.npmjs.org
+          scope: '@airnub'
           cache: pnpm
 
       - name: Install dependencies
@@ -50,18 +51,13 @@ jobs:
           npm pack --dry-run
           echo "✅ Package validation successful"
 
-      - name: Configure npm auth
-        if: inputs.dry_run != 'true'
-        run: |
-          echo "//registry.npmjs.org/:_authToken=\${NPM_TOKEN}" > ~/.npmrc
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-
       - name: Publish @airnub/wellknown-api-catalog
         if: inputs.dry_run != 'true'
         working-directory: packages/api-catalog
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           echo "📦 Publishing to npm..."
-          # Pre-release publish (use --tag next until stable GA)
+          npm whoami
           npm publish --access public --tag next
           echo "✅ Published successfully"
