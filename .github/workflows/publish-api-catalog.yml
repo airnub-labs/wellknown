@@ -43,6 +43,13 @@ jobs:
       - name: Build
         run: pnpm build
 
+      - name: Dry-run publish validation
+        working-directory: packages/api-catalog
+        run: |
+          echo "📦 Validating package..."
+          npm pack --dry-run
+          echo "✅ Package validation successful"
+
       - name: Configure npm auth
         if: inputs.dry_run != 'true'
         run: |
@@ -54,5 +61,7 @@ jobs:
         if: inputs.dry_run != 'true'
         working-directory: packages/api-catalog
         run: |
+          echo "📦 Publishing to npm..."
           # Pre-release publish (use --tag next until stable GA)
           npm publish --access public --tag next
+          echo "✅ Published successfully"

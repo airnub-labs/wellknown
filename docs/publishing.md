@@ -30,7 +30,90 @@ You need **write access** to the repository to:
 
 ---
 
+## First-Time Setup
+
+### Before Publishing for the First Time
+
+**⚠️ IMPORTANT:** If this is the first time publishing the package, follow these steps:
+
+#### 1. Verify npm Organization Access
+
+The package is scoped to `@airnub`. You need to either:
+
+**Option A: Join existing organization**
+1. Ask the organization owner to invite you:
+   - Go to https://www.npmjs.com/settings/airnub/members
+   - Add your npm username as a member with **publish permissions**
+2. Accept the invitation in your email
+
+**Option B: Create the organization (if it doesn't exist)**
+1. Go to https://www.npmjs.com/org/create
+2. Create organization: `airnub`
+3. Choose organization type (free for open source)
+4. Add other team members as needed
+
+#### 2. Verify Your Access
+
+```bash
+# Check if you can access the organization
+npm access ls-packages @airnub
+
+# If the package doesn't exist yet, this is expected
+# If you see "E404: Not found", verify organization membership
+```
+
+#### 3. Test Before Publishing
+
+**ALWAYS run the workflow with `dry_run: true` first:**
+
+1. Go to [GitHub Actions](https://github.com/airnub-labs/wellknown/actions)
+2. Select **"Publish @airnub/wellknown-api-catalog"** workflow
+3. Click **"Run workflow"**
+4. **Set `dry_run` to `true`**
+5. Verify the build, tests, and package validation succeed
+
+This validates your package without publishing it to npm.
+
+#### 4. First Publish Checklist
+
+Before your first publish, ensure:
+
+- [ ] You're a member of the `@airnub` npm organization
+- [ ] You have publish permissions in the organization
+- [ ] `NPM_TOKEN` is configured in GitHub secrets (with publish access)
+- [ ] Package name `@airnub/wellknown-api-catalog` is available on npm
+- [ ] Dry-run workflow completed successfully
+- [ ] Version in `package.json` follows semver (e.g., `0.1.0-alpha.1`)
+
+#### 5. Common First-Time Errors
+
+**Error: `404 Not Found - PUT https://registry.npmjs.org/@airnub%2fwellknown-api-catalog`**
+
+This means either:
+- The `@airnub` organization doesn't exist → Create it or verify the name
+- You're not a member of the organization → Request access from the owner
+- Your npm token doesn't have publish permissions → Regenerate with **Automation** type
+
+**Solution:**
+1. Verify organization exists: https://www.npmjs.com/org/airnub
+2. Check your membership: `npm access ls-packages @airnub`
+3. Ensure `NPM_TOKEN` in GitHub secrets is an **Automation** token (not Classic)
+
+---
+
 ## Release Process
+
+### Important: Always Dry-Run First
+
+**⚠️ Before tagging any release version, ALWAYS run the publish workflow with `dry_run: true`**
+
+This prevents wasting time if there are configuration issues. The dry-run will:
+- ✅ Validate your build succeeds
+- ✅ Run all tests and linters
+- ✅ Validate the package structure
+- ❌ Skip actual publishing to npm
+
+Only proceed with tagging and publishing after dry-run succeeds.
 
 ### Step 1: Version Bump
 
@@ -70,21 +153,34 @@ git push origin main --tags
 
 #### Option A: Via GitHub Actions (Recommended)
 
+**First: Run with dry-run (REQUIRED)**
+
 1. Go to [GitHub Actions](https://github.com/airnub-labs/wellknown/actions)
 2. Select **"Publish @airnub/wellknown-api-catalog"** workflow
 3. Click **"Run workflow"**
 4. Configure:
    - **Branch:** `main` (or your release branch)
-   - **dry_run:** `false` (set to `true` for testing)
+   - **dry_run:** `true` ⚠️ Important: Always test first!
 5. Click **"Run workflow"**
-6. Wait for the workflow to complete
+6. Wait for the workflow to complete and verify all checks pass
+
+**Then: Publish for real**
+
+1. Go back to the workflow
+2. Click **"Run workflow"** again
+3. Configure:
+   - **Branch:** `main` (or your release branch)
+   - **dry_run:** `false` (now ready to publish)
+4. Click **"Run workflow"**
+5. Wait for the workflow to complete
 
 **The workflow will:**
 - Install dependencies
 - Run linters (`pnpm lint`)
 - Run tests (`pnpm test`)
 - Build the package (`pnpm build`)
-- Publish to npm with provenance
+- Validate package structure (`npm pack --dry-run`)
+- Publish to npm with provenance (if dry_run=false)
 
 #### Option B: Local Publishing (Not Recommended)
 
@@ -201,6 +297,33 @@ npm publish --access public
 
 ## Troubleshooting
 
+### Error: "404 Not Found" when publishing
+
+```
+npm error 404 Not Found - PUT https://registry.npmjs.org/@airnub%2fwellknown-api-catalog
+npm error 404 '@airnub/wellknown-api-catalog@x.x.x' is not in this registry.
+```
+
+**This is the most common first-time publish error.**
+
+**Root causes:**
+1. The `@airnub` npm organization doesn't exist
+2. You're not a member of the organization
+3. Your npm token lacks publish permissions
+
+**Solution:**
+1. **Check organization exists:** Visit https://www.npmjs.com/org/airnub
+   - If it doesn't exist, create it at https://www.npmjs.com/org/create
+2. **Verify your membership:**
+   ```bash
+   npm access ls-packages @airnub
+   ```
+   - If you see an error, request access from the organization owner
+3. **Check your token type:**
+   - GitHub Secret `NPM_TOKEN` must be an **Automation** token (not Classic)
+   - Regenerate at https://www.npmjs.com/settings/tokens if needed
+4. **For first-time publish:** See the [First-Time Setup](#first-time-setup) section above
+
 ### Error: "You do not have permission to publish"
 
 **Solution:**
@@ -272,19 +395,25 @@ For now, we use manual versioning to maintain explicit control over releases.
 
 ## Checklist
 
-Before publishing, ensure:
+### Before Creating Release Tag:
 
 - [ ] Version bumped in `packages/api-catalog/package.json`
 - [ ] Changelog updated (if applicable)
+- [ ] **Dry-run workflow executed successfully** (`dry_run: true`)
 - [ ] Tests passing (`pnpm test`)
 - [ ] Linters passing (`pnpm lint`)
 - [ ] Build succeeds (`pnpm build`)
+- [ ] Package validation passes (`npm pack --dry-run`)
+
+### After Creating Release Tag:
+
 - [ ] Git tag created (`api-catalog-v<version>`)
 - [ ] Tag pushed to GitHub
-- [ ] npm publish completed
+- [ ] Publish workflow executed (`dry_run: false`)
+- [ ] npm publish completed successfully
 - [ ] GitHub release created
 - [ ] Release verified (`npm view @airnub/wellknown-api-catalog`)
 
 ---
 
-**Last Updated:** 2025-01-17
+**Last Updated:** 2025-11-18
