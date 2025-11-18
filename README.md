@@ -1,4 +1,4 @@
-# wellknown
+# Wellknown
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
 [![npm version](https://img.shields.io/npm/v/@airnub/wellknown-api-catalog.svg)](https://www.npmjs.com/package/@airnub/wellknown-api-catalog)
