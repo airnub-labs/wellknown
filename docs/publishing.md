@@ -203,6 +203,22 @@ rm ../../.npmrc
 
 ### Step 4: Create GitHub Release
 
+#### First-Time Setup for GitHub Releases
+
+**Prerequisites:**
+- You need **write access** to the repository to create releases
+- The git tag must already exist and be pushed to GitHub
+
+**Verify your access:**
+1. Go to [Releases](https://github.com/airnub-labs/wellknown/releases)
+2. You should see a **"Draft a new release"** button
+3. If you don't see this button, you don't have sufficient permissions
+
+**If you lack permissions:**
+- Ask a repository admin to grant you **write** or **maintain** role
+- Go to repository **Settings** → **Collaborators and teams**
+- Or ask someone with access to create the release for you
+
 #### Option A: Via GitHub UI (Recommended)
 
 1. Go to [Releases](https://github.com/airnub-labs/wellknown/releases)
@@ -212,15 +228,36 @@ rm ../../.npmrc
    - **Release title:** `@airnub/wellknown-api-catalog v0.1.0`
    - **Description:** Write release notes (see template below)
    - **Set as latest release:** ✅ (if this is the latest stable version)
+   - **Set as a pre-release:** ✅ (if version contains -alpha, -beta, -rc)
 4. Click **"Publish release"**
+
+**⚠️ Important:** For pre-release versions (e.g., `0.1.0-alpha.1`), always check **"Set as a pre-release"** to avoid marking it as the latest stable version.
 
 #### Option B: Via GitHub CLI
 
+**First-time setup:**
+```bash
+# Verify gh CLI is installed and authenticated
+gh auth status
+
+# If not authenticated, login
+gh auth login
+```
+
+**For stable releases:**
 ```bash
 gh release create api-catalog-v0.1.0 \
   --title "@airnub/wellknown-api-catalog v0.1.0" \
   --notes "Release notes here" \
   --latest
+```
+
+**For pre-releases (alpha, beta, rc):**
+```bash
+gh release create api-catalog-v0.1.0-alpha.1 \
+  --title "@airnub/wellknown-api-catalog v0.1.0-alpha.1" \
+  --notes "Release notes here" \
+  --prerelease
 ```
 
 **Release Notes Template:**
@@ -331,6 +368,38 @@ npm error 404 '@airnub/wellknown-api-catalog@x.x.x' is not in this registry.
 2. Check `NPM_TOKEN` is valid and has publish permissions
 3. Ensure token is set in GitHub secrets (if using Actions)
 
+### Error: Cannot create GitHub release (403 Forbidden)
+
+**Symptoms:**
+- "Draft a new release" button is missing or grayed out
+- Error: "Resource not accessible by integration" or "403 Forbidden"
+
+**Root causes:**
+1. You don't have write access to the repository
+2. The git tag hasn't been pushed to GitHub yet
+
+**Solution:**
+1. **Verify repository permissions:**
+   ```bash
+   # Check your access level
+   gh api repos/airnub-labs/wellknown/collaborators/$(gh api user -q .login)/permission
+   ```
+   - You need `write`, `maintain`, or `admin` permission
+   - Ask a repository admin to add you if needed
+
+2. **Verify tag exists on GitHub:**
+   ```bash
+   # List remote tags
+   git ls-remote --tags origin | grep api-catalog
+
+   # If missing, push your tag
+   git push origin api-catalog-v0.1.0
+   ```
+
+3. **For first-time contributors:** Repository admins need to add you via:
+   - **Settings** → **Collaborators and teams** → **Add people**
+   - Grant at least **Write** role
+
 ### Error: "Version already exists"
 
 **Solution:**
@@ -404,15 +473,20 @@ For now, we use manual versioning to maintain explicit control over releases.
 - [ ] Linters passing (`pnpm lint`)
 - [ ] Build succeeds (`pnpm build`)
 - [ ] Package validation passes (`npm pack --dry-run`)
+- [ ] You have write access to the GitHub repository (for creating releases)
 
 ### After Creating Release Tag:
 
 - [ ] Git tag created (`api-catalog-v<version>`)
-- [ ] Tag pushed to GitHub
+- [ ] Tag pushed to GitHub (`git push origin <tag>`)
+- [ ] Tag is visible on GitHub (verify via releases page or `git ls-remote`)
 - [ ] Publish workflow executed (`dry_run: false`)
 - [ ] npm publish completed successfully
 - [ ] GitHub release created
-- [ ] Release verified (`npm view @airnub/wellknown-api-catalog`)
+  - [ ] Marked as **pre-release** if version contains -alpha, -beta, or -rc
+  - [ ] Marked as **latest** only for stable versions
+- [ ] Release verified on npm (`npm view @airnub/wellknown-api-catalog`)
+- [ ] Release verified on GitHub (check releases page)
 
 ---
 
